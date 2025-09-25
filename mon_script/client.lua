@@ -11,7 +11,7 @@ end)
 
 RegisterCommand("wp", function(command, args)
     local player = PlayerPedId()
-    local blip = GetFirstBlipInfoId(8) -- 8 = waypoint
+    local blip = GetFirstBlipInfoId(8) 
 
     if DoesBlipExist(blip) then
         local coords = GetBlipInfoIdCoord(blip)

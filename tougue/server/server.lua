@@ -1,18 +1,17 @@
--- server.lua
+-- server.lua (ajouts / remplacements pour match creation + ready/countdown)
 
 local queue = {}
-local maxPlayers = 2 -- 1v1
-local matchInfo = {}
+local maxPlayers = 2
+local matchTimeoutReady = 8000 -- ms pour attendre les ready
 
--- Commande de test (exécutée côté serveur)
-RegisterCommand("testq", function(source, args, rawCommand)
-    -- source = 0 si console ; si joueur, source = server id
-    if source == 0 then
-        print("Commande testq lancée depuis la console.")
-    else
-        TriggerClientEvent("tougue:client:notify", source, "TEST Début du jeu !")
-    end
-end)
+local matches = {} -- table des matchs actifs, indexée par matchId
+
+-- helper : est-ce qu'un joueur serverId est connecté ?
+local function isPlayerConnected(serverId)
+    if not serverId then return false end
+    local name = GetPlayerName(serverId)
+    return name ~= nil and name ~= ""
+end
 
 -- Un joueur rejoint la queue. On reçoit le playerName depuis le client.
 RegisterNetEvent("tougue:server:joinQueue")
@@ -56,7 +55,7 @@ AddEventHandler("tougue:server:joinQueue", function(playerName)
     end
 end)
 
--- Création du match (serveur)
+-- création du match (remplace ton ancien RegisterNetEvent("tougue:server:matchCreated"))
 RegisterNetEvent("tougue:server:matchCreated")
 AddEventHandler("tougue:server:matchCreated", function(playersInMatch)
     if not playersInMatch or #playersInMatch < 2 then
@@ -64,23 +63,115 @@ AddEventHandler("tougue:server:matchCreated", function(playersInMatch)
         return
     end
 
-    print("Le jeu commence maintenant ! Match entre " .. tostring(playersInMatch[1].name) .. " et " .. tostring(playersInMatch[2].name))
-
     local lead = playersInMatch[1].id
     local chaser = playersInMatch[2].id
 
-    local modelLead = "adder"     -- modèle (string)
-    local modelChaser = "zentorno" -- modèle (string)
+    if not isPlayerConnected(lead) then
+        print("Lead non connecté, annulation du match.")
+        TriggerClientEvent("tougue:client:notify", chaser, "Le match a été annulé : adversaire déconnecté.")
+        return
+    end
+    if not isPlayerConnected(chaser) then
+        print("Chaser non connecté, annulation du match.")
+        TriggerClientEvent("tougue:client:notify", lead, "Le match a été annulé : adversaire déconnecté.")
+        return
+    end
 
-    -- Spawn coordinates (tu peux externaliser dans config)
+    print("Création match entre " .. playersInMatch[1].name .. " et " .. playersInMatch[2].name)
+
+    local leadModel = "adder"
+    local chaserModel = "zentorno"
     local leadCoords = { x = 471.362640, y = 892.613464, z = 197.687119, heading = 345.2146 }
     local chaserCoords = { x = 469.560150, y = 882.534973, z = 197.787552, heading = 345.0 }
 
-    -- Envoi event aux clients pour spawn des véhicules (utilise TriggerClientEvent vers chaque joueur)
-    TriggerClientEvent("tougue:client:spawnCarLead", lead, modelLead, leadCoords)
-   TriggerClientEvent("tougue:client:spawnCarChaser", chaser, modelChaser, chaserCoords)
+    -- créer un matchId unique
+    local matchId = tostring(os.time()) .. "_" .. tostring(lead)
 
-    -- Notif pour démarrage du match (pourrait attendre le "ready")
-    TriggerClientEvent("tougue:client:startMatch", lead, chaser, { some = "info" })
-    TriggerClientEvent("tougue:client:startMatch", chaser, lead, { some = "info" })
+    -- objet match côté serveur pour suivre les ready
+    local match = {
+        id = matchId,
+        players = { lead, chaser },
+        ready = {}, -- table serverId -> true/false
+        createdAt = GetGameTimer()
+    }
+
+    -- initialisation ready
+    for _, sid in ipairs(match.players) do match.ready[sid] = false end
+
+    -- stocker le match globalement pour pouvoir y accéder depuis playerReady
+    matches[matchId] = match
+
+    -- envoyer l'event de préparation (spawn + freeze) à chaque joueur, en incluant matchId
+    TriggerClientEvent("tougue:client:prepareRound", lead, matchId, "lead", leadModel, leadCoords)
+    TriggerClientEvent("tougue:client:prepareRound", chaser, matchId, "chaser", chaserModel, chaserCoords)
+
+    -- attente active des ready avec timeout
+    local startWait = GetGameTimer()
+    local allReady = false
+    while (GetGameTimer() - startWait) < matchTimeoutReady do
+        -- vérifier si tous prêts
+        allReady = true
+        for _, sid in ipairs(match.players) do
+            if not match.ready[sid] then
+                allReady = false
+                break
+            end
+        end
+        if allReady then break end
+        Wait(200)
+    end
+
+    if not allReady then
+        -- timeout : annulation ou décision (ici : notification et fin)
+        for _, sid in ipairs(match.players) do
+            if isPlayerConnected(sid) then
+                TriggerClientEvent("tougue:client:notify", sid, "Match annulé : un joueur n'a pas chargé à temps.")
+            end
+        end
+        print("match " .. match.id .. " annulé (timeout ready).")
+        -- cleanup
+        matches[matchId] = nil
+        return
+    end
+
+    -- Si on arrive ici, tous sont prêts : on lance le countdown (serveur ordonne)
+    for _, sid in ipairs(match.players) do
+        TriggerClientEvent("tougue:client:startCountdown", sid, 3) -- countdown 3 secondes
+    end
+
+    print("match " .. match.id .. " démarré (countdown envoyé).")
+
+    -- tu peux garder le match stocké (matches[matchId]) pour la suite (rounds, checkpoints, etc.)
+end)
+
+-- Endpoint : joueur signale qu'il est prêt après spawn/freeze/chargement client-side
+-- Maintenant on attend matchId en paramètre
+RegisterNetEvent("tougue:server:playerReady")
+AddEventHandler("tougue:server:playerReady", function(matchId)
+    local src = source
+    print("Server received ready from " .. tostring(src) .. " for matchId=" .. tostring(matchId))
+
+    if not matchId then
+        print("playerReady reçu sans matchId de la part de " .. tostring(src))
+        return
+    end
+
+    local match = matches[matchId]
+    if not match then
+        print("playerReady: match introuvable pour matchId=" .. tostring(matchId))
+        return
+    end
+
+    -- vérifier que le joueur fait bien partie du match
+    local isParticipant = false
+    for _, sid in ipairs(match.players) do
+        if sid == src then isParticipant = true; break end
+    end
+    if not isParticipant then
+        print("playerReady: joueur " .. tostring(src) .. " n'est pas dans le match " .. tostring(matchId))
+        return
+    end
+
+    match.ready[src] = true
+    TriggerClientEvent("tougue:client:notify", src, "Prêt confirmé par le serveur.")
 end)

@@ -1,5 +1,8 @@
 -- client.lua
 
+local controlsBlocked = false
+local blockThread = nil
+
 RegisterCommand("tjoin", function()
     message("Vous entrez dans la queue de test.")
     
@@ -19,16 +22,41 @@ AddEventHandler("tougue:client:startMatch", function(lead, chaser, matchInfo)
     -- log ou préparation côté client si besoin
 end)
 
-RegisterNetEvent("tougue:client:spawnCarLead")
-AddEventHandler("tougue:client:spawnCarLead", function(model, coords)
-    print("Event spawnCarLead received " .. tostring(model) .. " at " .. tostring(coords.x) .. "," .. tostring(coords.y) .. "," .. tostring(coords.z))
-    spawnCar(PlayerPedId(), model, coords)
+
+RegisterNetEvent("tougue:client:prepareRound")
+AddEventHandler("tougue:client:prepareRound", function(matchId, role, modelName, coordsTable)
+    local player = PlayerPedId()
+    message("Préparation du round (" .. tostring(role) .. ") ...")
+
+    -- spawnCar (ta fonction existante) : on laisse la voiture freeze pour le countdown serveur
+    local veh = spawnCar(player, modelName, coordsTable)
+
+    -- Bloquer les contrôles pendant la phase de préparation
+    blockPlayerControls(true)
+
+    -- Quand le véhicule est prêt et freeze, on avertit le serveur en envoyant matchId
+    TriggerServerEvent("tougue:server:playerReady", matchId)
 end)
 
-RegisterNetEvent("tougue:client:spawnCarChaser")
-AddEventHandler("tougue:client:spawnCarChaser", function(model, coords)
-    spawnCar(PlayerPedId(), model, coords)
+RegisterNetEvent("tougue:client:startCountdown")
+AddEventHandler("tougue:client:startCountdown", function(seconds)
+    seconds = tonumber(seconds) or 3
+    for i = seconds, 1, -1 do
+        message(tostring(i))
+        PlaySoundFrontend(-1, "NAV_UP_DOWN", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
+        Wait(1000)
+    end
+    message("Go !")
+
+    -- Débloquer le véhicule et les contrôles
+    local player = PlayerPedId()
+    local veh = GetVehiclePedIsIn(player, false)
+    if veh and veh ~= 0 then
+        FreezeEntityPosition(veh, false)
+    end
+    blockPlayerControls(false)
 end)
+
 
 -- Affichage simple en HUD
 function message(msg)
@@ -40,6 +68,12 @@ end
 
 -- Spawn safe d'un vehicle et mise dedans
 function spawnCar(playerPed, modelName, coords)
+    local veh = GetVehiclePedIsIn(player, false)
+    local lastVeh = GetLastDrivenVehicle()
+    veh = lastVeh
+    if veh and veh ~= 0 then
+        DeleteEntity(veh)
+    end
     if not modelName or not coords then
         print("spawnCar: modelName ou coords manquant")
         return
@@ -76,17 +110,15 @@ function spawnCar(playerPed, modelName, coords)
     -- Mettre le joueur dans le véhicule
     SetPedIntoVehicle(playerPed, vehicle, -1)
 
-    -- Freeze le véhicule pendant 5s
+    -- ⚠️ Ici on freeze, mais pour le mode Touge on NE DÉFREEZE PAS directement.
+    -- Le serveur va gérer le countdown et débloquer après.
     FreezeEntityPosition(vehicle, true)
-    Citizen.SetTimeout(5000, function()
-        FreezeEntityPosition(vehicle, false)
-        message("Le véhicule est maintenant déverrouillé. Bonne chance !")
-    end)
 
     -- Libération du modèle
     SetModelAsNoLongerNeeded(modelHash)
 
     print("Véhicule " .. tostring(modelName) .. " créé et vous êtes monté dedans.")
+    return vehicle
 end
 
 function fullCustom(player, veh)
@@ -119,5 +151,27 @@ function fullCustom(player, veh)
         print("Véhicule full custom rouge !")
     else
         print("fullCustom: véhicule invalide.")
+    end
+end
+
+function blockPlayerControls(enable)
+    controlsBlocked = enable
+    if enable then
+        if blockThread then return end
+        blockThread = Citizen.CreateThread(function()
+            while controlsBlocked do
+                -- désactiver mouvements et actions utiles (tu peux ajuster)
+                DisableControlAction(0, 30, true) -- mouvement gauche/droite
+                DisableControlAction(0, 31, true) -- mouvement avant/arrière
+                DisableControlAction(0, 21, true) -- sprint
+                DisableControlAction(0, 24, true) -- tir
+                DisableControlAction(0, 75, true) -- quitter véhicule
+                DisableControlAction(0, 23, true) -- entrée menu
+                Wait(0)
+            end
+            blockThread = nil
+        end)
+    else
+        controlsBlocked = false
     end
 end
