@@ -1,0 +1,18 @@
+[
+  {
+    "id": "vinewood_antenna",
+    "name": "Montée l'antenne de Vinewood",
+    "description": "Course courte et technique jusqu'à l'antenne de Vinewood.",
+    "start": { "x": 472.0, "y": 884.0, "z": 197.6, "heading": 345.21 },
+    "finish": { "x": 479.2, "y": 907.3, "z": 200.1 },
+    "blip": { "sprite": 1, "color": 5 },
+    "checkpoints": [
+      { "pos": { "x": 471.3, "y": 892.6, "z": 197.68 }, "radius": 6.0 },
+      { "pos": { "x": 469.6, "y": 882.5, "z": 197.78 }, "radius": 6.0 },
+      { "pos": { "x": 462.0, "y": 870.0, "z": 199.0 }, "radius": 6.0 },
+      { "pos": { "x": 455.0, "y": 860.5, "z": 200.5 }, "radius": 6.0 },
+      { "pos": { "x": 479.2, "y": 907.3, "z": 200.1 }, "radius": 8.0 }
+    ],
+    "meta": { "maxPlayers": 2, "minPlayers": 1, "laps": 1, "timeLimit": 0, "allowedVehicles": [], "reward": { "money": 500, "points": 10 } }
+  }
+]

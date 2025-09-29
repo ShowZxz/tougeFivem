@@ -1,3 +1,25 @@
+-- Commande pour afficher un checkpoint persistant à la position du joueur
+local checkpointThread = nil
+RegisterCommand("checkpoint", function()
+    local player = PlayerPedId()
+    local coords = GetEntityCoords(player)
+    local radius = 5.0
+    local checkpointType = 47 -- Cône bleu
+    local checkpointPos = vector3(coords.x, coords.y, coords.z - 1.0)
+    print("Checkpoint persistant créé à ta position !")
+    if checkpointThread then return end
+    checkpointThread = Citizen.CreateThread(function()
+        while true do
+            local player = PlayerPedId()
+            local pCoords = GetEntityCoords(player)
+            local dist = #(pCoords - checkpointPos)
+            if dist < 50.0 then
+                DrawMarker(checkpointType, checkpointPos.x, checkpointPos.y, checkpointPos.z, 0, 0, 0, 0, 0, 0, radius, radius, 2.0, 0, 0, 255, 100, false, true, 2, nil, nil, false)
+            end
+            Wait(0)
+        end
+    end)
+end)
 RegisterCommand("hello", function()
     print("Hello world!")
 end)
@@ -80,6 +102,17 @@ RegisterCommand("car", function(source, args, rawCommand)
 
 end)
 
+RegisterCommand("dv", function()
+    local player = PlayerPedId()
+    local veh = GetVehiclePedIsIn(player, false)
+
+    if veh and veh ~= 0 then
+        DeleteEntity(veh)
+        print("Véhicule supprimé.")
+    else
+        print("Vous n'êtes pas dans un véhicule.")
+    end
+end)
 
 RegisterCommand("fix", function()
     local player = PlayerPedId()
@@ -124,4 +157,33 @@ RegisterCommand("fullc", function()
         else
             print("Vous n'êtes pas dans un véhicule.")
     end
+end)
+
+local checkpointThread = nil
+RegisterCommand("checkpoint", function()
+    local player = PlayerPedId()
+    local coords = GetEntityCoords(player)
+    local radius = 10.0
+    local checkpointType = 6 
+    local checkpointPos = vector3(coords.x, coords.y, coords.z - 1.0)
+    print("Checkpoint persistant créé à ta position !")
+    if checkpointThread then return end
+    checkpointThread = Citizen.CreateThread(function()
+        while true do
+            local player = PlayerPedId()
+            local pCoords = GetEntityCoords(player)
+            local dist = #(pCoords - checkpointPos)
+            if dist < 200.0 then
+                DrawMarker(checkpointType, checkpointPos.x, checkpointPos.y, checkpointPos.z+3, 0, 0, 0, 0, 0, 0, radius, radius, radius, 0, 0, 255, 100, false, true, 2, nil, nil, false)  
+                end
+                if dist < radius then
+                    -- Le joueur est dans le checkpoint
+                    print("Checkpoint atteint !")
+                    -- supprimer le checkpoint
+                    checkpointThread = nil
+                    return
+                end
+            Wait(0)
+        end
+    end)
 end)
