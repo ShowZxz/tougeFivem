@@ -1,17 +1,20 @@
--- server.lua
+-- server.lua (version complète — match manager, rounds, checkpoints, timeout)
+-- Remplace ton server.lua par ce fichier
+
+-- Charger les tracks (fichier server/tracks.lua attendu)
 local tracks = assert(load(LoadResourceFile(GetCurrentResourceName(), "server/tracks.lua")))()
 
-
+-- Config
 local queue = {}
 local maxPlayers = 2
 local matchTimeoutReady = 8000 -- ms pour attendre les ready
+local matches = {}             -- table des matchs actifs, indexée par matchId
 
-local matches = {} -- table des matchs actifs, indexée par matchId
-local playerProgress = {} -- pour suivre la progression des joueurs dans les courses
+-- Validation params
 local CHECKPOINT_MARGIN = 1.5        -- tolérance en mètres
 local MIN_TIME_BETWEEN_CHECKPOINTS = 800 -- ms
 
--- helper : est-ce qu'un joueur serverId est connecté ?
+-- Helpers ---------------------------------------------------------
 local function isPlayerConnected(serverId)
     if not serverId then return false end
     local name = GetPlayerName(serverId)
@@ -23,184 +26,107 @@ local function chooseRandom(list)
     return list[math.random(#list)]
 end
 
+-- Initialise seed random
+math.randomseed(os.time())
+math.random(); math.random(); math.random()
+
+-- Create match with random track & vehicle ------------------------
 local function createMatchWithRandomTrack(playersInMatch)
-    -- Choix de la track (ici aléatoire ; pour forcer vinewood tu peux chercher par id)
-    local track = chooseRandom(tracks) -- ou: track = tracks[1]
+    local track = chooseRandom(tracks)
     if not track then
-        print("Aucune track disponible !")
+        print("[tougue] createMatch: aucune track disponible")
         return nil
     end
 
-    -- Choix du véhicule : si allowedVehicles non vide -> choisir dedans, sinon fallback
     local allowed = track.meta and track.meta.allowedVehicles or {}
     local chosenVehicle = nil
     if allowed and #allowed > 0 then
         chosenVehicle = chooseRandom(allowed)
     else
-        chosenVehicle = "adder" -- fallback si aucune restriction
+        chosenVehicle = "adder"
     end
 
-    -- playersInMatch : table contenant { {id=serverid, name=...}, ... } Shuffle pour randomiser les rôles
-    math.randomseed(os.time())
+    -- Shuffle players to randomize roles
     for i = #playersInMatch, 2, -1 do
         local j = math.random(i)
         playersInMatch[i], playersInMatch[j] = playersInMatch[j], playersInMatch[i]
     end
-    -- rôles : 1er = lead, 2e = chaser
+
     local lead = playersInMatch[1].id
     local chaser = playersInMatch[2].id
 
-    -- créer l'objet match
     local matchId = tostring(os.time()) .. "_" .. tostring(lead)
+
     local match = {
         id = matchId,
         trackId = track.id,
-        track = track, -- copie utile pour la suite
+        track = track,
         players = { lead, chaser },
-        ready = {},
-        currentCheckpoint = {}, -- pour stocker par joueur si besoin
-        scores = {},
+        ready = {},                 -- ready flags per player
+        currentCheckpoint = {},     -- per player idx
+        scores = {},                -- per player score
+        lastCheckpointTime = {},    -- per player last cp timestamp
         createdAt = GetGameTimer(),
         timeout = track.meta and track.meta.timeLimit or 0,
-        round = 1,         -- numéro du round en cours
-        maxRounds = 2,     -- nombre total de rounds (lead/chaser inversés)
-        roles = { [lead] = "lead", [chaser] = "chaser" } -- pour savoir qui est quoi
+        round = 1,
+        maxRounds = track.meta and (track.meta.maxRounds or 2) or 2,
+        roles = { [lead] = "lead", [chaser] = "chaser" },
+        chosenVehicle = chosenVehicle
     }
 
-    -- init ready & scores & currentCheckpoint
     for _, sid in ipairs(match.players) do
         match.ready[sid] = false
         match.scores[sid] = 0
         match.currentCheckpoint[sid] = 1
+        match.lastCheckpointTime[sid] = 0
     end
 
-    -- stocker match
     matches[matchId] = match
 
-    -- préparer les données d'envoi : start coords dépend du rôle
     local leadCoords = track.start
-
     local chaserCoords = { x = track.start.x + 2.0, y = track.start.y + 2.0, z = track.start.z, heading = track.start.heading }
 
-    -- envoyer prepareRound à chaque joueur, avec le même modèle choisi
+    -- Send prepareRound with full track data to clients
     TriggerClientEvent("tougue:client:prepareRound", lead, matchId, "lead", chosenVehicle, leadCoords, track)
     TriggerClientEvent("tougue:client:prepareRound", chaser, matchId, "chaser", chosenVehicle, chaserCoords, track)
 
-    print(("Match %s créé sur la track %s avec vehicule %s"):format(matchId, track.id, tostring(chosenVehicle)))
+    print(("[tougue] Match %s créé sur la track %s avec véhicule %s"):format(matchId, track.id, tostring(chosenVehicle)))
     return matchId
 end
 
+-- Start next round (swap roles) ---------------------------------
 function startNextRound(match)
-    -- Inverser les rôles
-    print("Démarrage du round " .. tostring(match.round + 1) .. " du match " .. tostring(match.id) .. ", inversion des rôles.")
-    local lead, chaser = match.players[2], match.players[1]
-    match.players = { lead, chaser }
-    match.roles = { [lead] = "lead", [chaser] = "chaser" }
-    match.currentCheckpoint = { [lead] = 1, [chaser] = 1 }
-    match.ready = { [lead] = false, [chaser] = false }
+    if not match then return end
+
+    -- Inverse ordre des players (lead <-> chaser)
+    local oldP1, oldP2 = match.players[1], match.players[2]
+    match.players = { oldP2, oldP1 }
+
+    -- Update roles table
+    local p1, p2 = match.players[1], match.players[2]
+    match.roles = { [p1] = "lead", [p2] = "chaser" }
+
+    -- Reset checkpoints / ready / lastCheckpointTime
+    match.currentCheckpoint = {}
+    match.lastCheckpointTime = {}
+    match.ready = {}
+    for _, sid in ipairs(match.players) do
+        match.currentCheckpoint[sid] = 1
+        match.lastCheckpointTime[sid] = 0
+        match.ready[sid] = false
+    end
+
     match.round = match.round + 1
-    print("startNextRound : currentCheckpoint reset, ready reset" ..match.currentCheckpoint[lead].." "..match.currentCheckpoint[chaser])
-    -- reset lastCheckpointTime
-    -- Envoyer prepareRound aux deux joueurs
+
     local leadCoords = match.track.start
     local chaserCoords = { x = match.track.start.x + 2.0, y = match.track.start.y + 2.0, z = match.track.start.z, heading = match.track.start.heading }
-    TriggerClientEvent("tougue:client:prepareRound", lead, match.id, "lead", "adder", leadCoords, match.track)
-    TriggerClientEvent("tougue:client:prepareRound", chaser, match.id, "chaser", "adder", chaserCoords, match.track)
-    Wait(1000)
-    -- Attendre les ready avec timeout
-        for _, sid in ipairs(match.players) do
-        TriggerClientEvent("tougue:client:startCountdown", sid, 3) -- countdown 3 secondes
-        TriggerClientEvent("tougue:client:startRaceTimer", sid, match.timeout or 100000) -- start
-    end
-end
+    local model = match.chosenVehicle or "adder"
 
--- n'oublie pas d'initialiser le seed random (au démarrage du script)
-math.randomseed(os.time())
+    -- Re-prepare clients for the new round
+    TriggerClientEvent("tougue:client:prepareRound", match.players[1], match.id, "lead", model, leadCoords, match.track)
+    TriggerClientEvent("tougue:client:prepareRound", match.players[2], match.id, "chaser", model, chaserCoords, match.track)
 
--- Un joueur rejoint la queue. On reçoit le playerName depuis le client.
-RegisterNetEvent("tougue:server:joinQueue")
-AddEventHandler("tougue:server:joinQueue", function(playerName)
-    local src = source -- source = server player id
-    if not src then return end
-
-    -- Vérifier s'il est déjà dans la queue (pour éviter les doublons)
-    for _,p in ipairs(queue) do
-        if p.id == src then
-            -- Déjà dans la queue
-            TriggerClientEvent("tougue:client:notify", src, "Vous êtes déjà dans la file d'attente.")
-            return
-        end
-    end
-
-    table.insert(queue, {name = playerName, id = src})
-    print(string.format("%s a rejoint la file d'attente. (ServerID: %d)", tostring(playerName), src))
-    TriggerClientEvent("tougue:client:notify", src, "Vous avez rejoint la queue, en attente d'autres joueurs...")
-
-    -- Si on a assez de joueurs, on crée le match
-    if #queue >= maxPlayers then
-        local playersInMatch = {}
-
-        for i = 1, maxPlayers do
-            table.insert(playersInMatch, queue[i])
-        end
-
-        -- remove the first maxPlayers from queue
-        for i = 1, maxPlayers do
-            table.remove(queue, 1)
-        end
-
-        -- Notif les joueurs du début du match
-        for _, player in ipairs(playersInMatch) do
-            TriggerClientEvent("tougue:client:notify", player.id, "Début du jeu ! Préparez-vous...")
-        end
-
-        -- Créer le match côté serveur (simple)
-        TriggerEvent("tougue:server:matchCreated", playersInMatch)
-    end
-end)
-
--- création du match et envoi des données aux clients
-RegisterNetEvent("tougue:server:matchCreated")
-AddEventHandler("tougue:server:matchCreated", function(playersInMatch)
-    if not playersInMatch or #playersInMatch < 2 then
-        print("matchCreated: joueurs insuffisants.")
-        return
-    end
-
-    -- Vérification rapide de connexion côté serveur
-    local lead = playersInMatch[1].id
-    local chaser = playersInMatch[2].id
-    if not isPlayerConnected(lead) then
-        TriggerClientEvent("tougue:client:notify", chaser, "Le match a été annulé : adversaire déconnecté.")
-        return
-    end
-    if not isPlayerConnected(chaser) then
-        TriggerClientEvent("tougue:client:notify", lead, "Le match a été annulé : adversaire déconnecté.")
-        return
-    end
-
-    print("Création match entre " .. playersInMatch[1].name .. " et " .. playersInMatch[2].name)
-
-    -- Appel de ta fonction qui crée le match, choisit la track et le véhicule, envoie prepareRound et stocke matches[matchId]
-    local matchId = createMatchWithRandomTrack(playersInMatch)
-    if not matchId then
-        print("Erreur lors de la création du match (createMatchWithRandomTrack).")
-        for _, p in ipairs(playersInMatch) do
-            if isPlayerConnected(p.id) then
-                TriggerClientEvent("tougue:client:notify", p.id, "Erreur interne : impossible de créer le match.")
-            end
-        end
-        return
-    end
-
-    -- Récupère le match (qui a été stocké par createMatchWithRandomTrack)
-    local match = matches[matchId]
-    if not match then
-        print("matchCreated: match non trouvé après createMatchWithRandomTrack (matchId=" .. tostring(matchId) .. ")")
-        return
-    end
-
-    -- Attente active des ready avec timeout (même logique que précédemment)
+    -- Wait for playerReady (same pattern as initial match creation)
     local startWait = GetGameTimer()
     local allReady = false
     while (GetGameTimer() - startWait) < matchTimeoutReady do
@@ -216,193 +142,291 @@ AddEventHandler("tougue:server:matchCreated", function(playersInMatch)
     end
 
     if not allReady then
-        -- timeout : annulation
+        for _, sid in ipairs(match.players) do
+            if isPlayerConnected(sid) then
+                TriggerClientEvent("tougue:client:notify", sid, "Round annulé : un joueur n'a pas chargé à temps.")
+            end
+        end
+        print(("[tougue] match %s : timeout ready au startNextRound, annulation."):format(match.id))
+        matches[match.id] = nil
+        return
+    end
+
+    -- Start countdown and race timer on clients
+    for _, sid in ipairs(match.players) do
+        TriggerClientEvent("tougue:client:startCountdown", sid, 3)
+        TriggerClientEvent("tougue:client:startRaceTimer", sid, match.timeout or 100000)
+    end
+
+    print(("[tougue] match %s : round %d démarré."):format(match.id, match.round))
+end
+
+-- Queue handling & match creation --------------------------------
+RegisterNetEvent("tougue:server:joinQueue")
+AddEventHandler("tougue:server:joinQueue", function(playerName)
+    local src = source
+    if not src then return end
+
+    for _, p in ipairs(queue) do
+        if p.id == src then
+            TriggerClientEvent("tougue:client:notify", src, "Vous êtes déjà dans la file d'attente.")
+            return
+        end
+    end
+
+    table.insert(queue, { name = playerName, id = src })
+    print(("[tougue] %s a rejoint la file d'attente. (ServerID: %d)"):format(tostring(playerName), src))
+    TriggerClientEvent("tougue:client:notify", src, "Vous avez rejoint la queue, en attente d'autres joueurs...")
+
+    if #queue >= maxPlayers then
+        local playersInMatch = {}
+        for i = 1, maxPlayers do
+            table.insert(playersInMatch, queue[i])
+        end
+        for i = 1, maxPlayers do table.remove(queue, 1) end
+
+        for _, player in ipairs(playersInMatch) do
+            TriggerClientEvent("tougue:client:notify", player.id, "Début du jeu ! Préparez-vous...")
+        end
+
+        -- crée le match (émet prepareRound)
+        TriggerEvent("tougue:server:matchCreated", playersInMatch)
+    end
+end)
+
+-- Match creation handler -----------------------------------------
+RegisterNetEvent("tougue:server:matchCreated")
+AddEventHandler("tougue:server:matchCreated", function(playersInMatch)
+    if not playersInMatch or #playersInMatch < 2 then
+        print("[tougue] matchCreated: joueurs insuffisants.")
+        return
+    end
+
+    local lead = playersInMatch[1].id
+    local chaser = playersInMatch[2].id
+
+    if not isPlayerConnected(lead) then
+        TriggerClientEvent("tougue:client:notify", chaser, "Le match a été annulé : adversaire déconnecté.")
+        return
+    end
+    if not isPlayerConnected(chaser) then
+        TriggerClientEvent("tougue:client:notify", lead, "Le match a été annulé : adversaire déconnecté.")
+        return
+    end
+
+    print(("[tougue] Création match entre %s et %s"):format(tostring(playersInMatch[1].name), tostring(playersInMatch[2].name)))
+
+    local matchId = createMatchWithRandomTrack(playersInMatch)
+    if not matchId then
+        for _, p in ipairs(playersInMatch) do
+            if isPlayerConnected(p.id) then
+                TriggerClientEvent("tougue:client:notify", p.id, "Erreur interne : impossible de créer le match.")
+            end
+        end
+        return
+    end
+
+    local match = matches[matchId]
+    if not match then
+        print(("[tougue] matchCreated: match non trouvé après createMatchWithRandomTrack (matchId=%s)"):format(tostring(matchId)))
+        return
+    end
+
+    -- Attendre les ready (client enverra tougue:server:playerReady(matchId))
+    local startWait = GetGameTimer()
+    local allReady = false
+    while (GetGameTimer() - startWait) < matchTimeoutReady do
+        allReady = true
+        for _, sid in ipairs(match.players) do
+            if not match.ready[sid] then
+                allReady = false
+                break
+            end
+        end
+        if allReady then break end
+        Wait(200)
+    end
+
+    if not allReady then
         for _, sid in ipairs(match.players) do
             if isPlayerConnected(sid) then
                 TriggerClientEvent("tougue:client:notify", sid, "Match annulé : un joueur n'a pas chargé à temps.")
             end
         end
-        print("match " .. match.id .. " annulé (timeout ready).")
-        -- cleanup
+        print(("[tougue] match %s annulé (timeout ready)."):format(matchId))
         matches[matchId] = nil
         return
     end
 
-    -- Tous prêts → lance le countdown pour chaque joueur
+    -- Tous prêts -> start countdown + race timer
     for _, sid in ipairs(match.players) do
-        TriggerClientEvent("tougue:client:startCountdown", sid, 3) -- countdown 3 secondes
-        TriggerClientEvent("tougue:client:startRaceTimer", sid, match.timeout or 100000) -- start
+        TriggerClientEvent("tougue:client:startCountdown", sid, 3)
+        TriggerClientEvent("tougue:client:startRaceTimer", sid, match.timeout or 100000)
     end
 
-    print("match " .. match.id .. " démarré (countdown envoyé).")
-    -- match reste stocké dans matches[matchId] pour la suite (checkpoints / rounds / scoring)
+    print(("[tougue] match %s démarré (countdown envoyé)."):format(matchId))
 end)
 
--- Un joueur indique qu'il est prêt (après avoir chargé la track et le véhicule)
+-- PlayerReady handler --------------------------------------------
 RegisterNetEvent("tougue:server:playerReady")
 AddEventHandler("tougue:server:playerReady", function(matchId)
     local src = source
-    print("Server received ready from " .. tostring(src) .. " for matchId=" .. tostring(matchId))
-
     if not matchId then
-        print("playerReady reçu sans matchId de la part de " .. tostring(src))
+        print(("[tougue] playerReady reçu sans matchId de %s"):format(tostring(src)))
         return
     end
-
     local match = matches[matchId]
     if not match then
-        print("playerReady: match introuvable pour matchId=" .. tostring(matchId))
+        print(("[tougue] playerReady: match introuvable (%s) de %s"):format(tostring(matchId), tostring(src)))
         return
     end
 
-    -- vérifier que le joueur fait bien partie du match
     local isParticipant = false
     for _, sid in ipairs(match.players) do
         if sid == src then isParticipant = true; break end
     end
     if not isParticipant then
-        print("playerReady: joueur " .. tostring(src) .. " n'est pas dans le match " .. tostring(matchId))
+        print(("[tougue] playerReady: %s n'est pas participant du match %s"):format(tostring(src), tostring(matchId)))
         return
     end
 
     match.ready[src] = true
+    -- ack client
     TriggerClientEvent("tougue:client:notify", src, "Prêt confirmé par le serveur.")
-
 end)
 
+-- Checkpoint validation ------------------------------------------
 RegisterNetEvent("tougue:server:checkpointPassed")
 AddEventHandler("tougue:server:checkpointPassed", function(matchId, checkpointIndex, clientPos, clientTs)
     local src = source
     if not matchId or not checkpointIndex or not clientPos then
-        print("checkpointPassed: mauvaise requete de " .. tostring(src))
+        print(("[tougue] checkpointPassed: mauvaise requete de %s"):format(tostring(src)))
         return
     end
 
     local match = matches[matchId]
     if not match then
-        print("checkpointPassed: match introuvable (" .. tostring(matchId) .. ") from " .. tostring(src))
+        print(("[tougue] checkpointPassed: match introuvable (%s) from %s"):format(tostring(matchId), tostring(src)))
         return
     end
 
-    -- vérifier participant
+    -- verify participant
     local isParticipant = false
     for _, sid in ipairs(match.players) do
         if sid == src then isParticipant = true; break end
     end
     if not isParticipant then
-        print("checkpointPassed: joueur " .. tostring(src) .. " n'est pas participant du match " .. tostring(matchId))
+        TriggerClientEvent("tougue:client:notify", src, "Vous n'êtes pas participant de ce match.")
         return
     end
 
-    -- vérifie l'ordre attendu
+    -- expected index
     local expectedIndex = match.currentCheckpoint[src] or 1
-    print("Checkpoint expecté = "..tostring(expectedIndex).."currentCheckpoint = "..tostring(checkpointIndex))
     if checkpointIndex ~= expectedIndex then
-        print(("[SECURITE] %s essayé de valider checkpoint %d (attendu %d)"):format(tostring(src), checkpointIndex, expectedIndex))
-        TriggerClientEvent("tougue:client:notify", src, "Checkpoint rejeté : ordre incorrect.")
+        TriggerClientEvent("tougue:client:notify", src, ("Checkpoint rejeté : ordre incorrect (attendu %d)").format(expectedIndex))
         return
     end
 
-    -- récupérer checkpoint serveur
+    -- server-side check: distance
     local cp = match.track.checkpoints[checkpointIndex]
     if not cp then
-        print("checkpointPassed: checkpoint introuvable index=" .. tostring(checkpointIndex))
+        print(("[tougue] checkpointPassed: checkpoint introuvable index=%s"):format(tostring(checkpointIndex)))
         return
     end
 
-    -- vérifier la distance serveur < radius + margin
     local dx = clientPos.x - cp.pos.x
     local dy = clientPos.y - cp.pos.y
     local dz = (clientPos.z or 0) - cp.pos.z
     local dist = math.sqrt(dx*dx + dy*dy + dz*dz)
     if dist > (cp.radius + CHECKPOINT_MARGIN) then
-        print(("SECURITE: joueur %d trop loin du checkpoint (dist=%.2f, allowed=%.2f)"):format(src, dist, cp.radius + CHECKPOINT_MARGIN))
         TriggerClientEvent("tougue:client:notify", src, "Checkpoint rejeté : position invalide.")
         return
     end
 
-    -- anti-spam / anti-teleport (min time)
-    local lastTime = match.lastCheckpointTime and match.lastCheckpointTime[src] or 0
+    -- anti-spam / anti-teleport
+    local lastTime = match.lastCheckpointTime[src] or 0
     if clientTs and (clientTs - lastTime) < MIN_TIME_BETWEEN_CHECKPOINTS then
-        print(("SECURITE: joueur %d validate checkpoint trop vite (delta=%dms)"):format(src, (clientTs - lastTime)))
         TriggerClientEvent("tougue:client:notify", src, "Checkpoint rejeté : trop rapide.")
         return
     end
 
-    -- Tout OK -> valider
+    -- VALID -> update server state
     match.currentCheckpoint[src] = (match.currentCheckpoint[src] or 1) + 1
-    match.lastCheckpointTime = match.lastCheckpointTime or {}
     match.lastCheckpointTime[src] = clientTs or GetGameTimer()
 
-    print(("Match %s: joueur %d validé checkpoint %d (next=%d)"):format(matchId, src, checkpointIndex, match.currentCheckpoint[src]))
+    print(("[tougue] Match %s: joueur %d validé checkpoint %d (next=%d)"):format(matchId, src, checkpointIndex, match.currentCheckpoint[src]))
 
-    -- notifier client
+    -- notify client (server confirmation)
     TriggerClientEvent("tougue:client:checkpointValidated", src, matchId, checkpointIndex)
 
-    -- si c'était le dernier checkpoint -> round finished pour ce joueur
+    -- if last checkpoint -> round finished for that player
     local totalCp = #match.track.checkpoints
     if checkpointIndex >= totalCp then
-        print(("Match %s: joueur %d a terminé la course !"):format(matchId, src))
-        -- update scores
         match.scores[src] = (match.scores[src] or 0) + 1
-        -- notifier tous les joueurs du round end
+
+        -- notify all players round end
         for _, sid in ipairs(match.players) do
             TriggerClientEvent("tougue:client:roundEnd", sid, matchId, { winner = src, scores = match.scores })
         end
 
+        -- decide next: another round or match end
         if match.round < match.maxRounds then
-    -- Relancer un round avec inversion des rôles
-        startNextRound(match)
+            -- small delay to allow clients to see roundEnd & cleanup
+            Citizen.CreateThread(function()
+                Wait(2500)
+                startNextRound(match)
+            end)
         else
-    -- Fin du match, calcul du vainqueur
-            local scoreLead = match.scores[match.players[1]] or 0
-            local scoreChaser = match.scores[match.players[2]] or 0
-            local winner
-            if scoreLead > scoreChaser then
-                winner = match.players[1]
-            elseif scoreChaser > scoreLead then
-                winner = match.players[2]
-            else
-                winner = nil -- égalité
+            -- match finished: compute winner
+            local p1, p2 = match.players[1], match.players[2]
+            local s1 = match.scores[p1] or 0
+            local s2 = match.scores[p2] or 0
+            local winner = nil
+            if s1 > s2 then winner = p1
+            elseif s2 > s1 then winner = p2
+            else winner = nil -- tie
             end
+
             for _, sid in ipairs(match.players) do
-                TriggerClientEvent("tougue:client:matchEnd", sid, match.id, { scores = match.scores, winner = winner })
+                TriggerClientEvent("tougue:client:matchEnd", sid, matchId, { scores = match.scores, winner = winner })
             end
-            matches[match.id] = nil -- cleanup
+
+            -- cleanup match after short delay
+            Citizen.CreateThread(function()
+                Wait(3000)
+                matches[matchId] = nil
+                print(("[tougue] match %s cleaned up (finished)."):format(matchId))
+            end)
         end
-        -- gestion round/next steps (reset, swap roles, etc.) à implémenter ici
-        -- pour le moment on fait cleanup simplifié
-        -- matches[matchId] = nil -- si tu veux nettoyer tout de suite
     end
 end)
 
+-- Race timeout handler -------------------------------------------
 RegisterNetEvent("tougue:server:raceTimeout")
 AddEventHandler("tougue:server:raceTimeout", function(matchId)
     local src = source
-    print(("raceTimeout reçu de %s pour matchId=%s"):format(tostring(src), tostring(matchId)))
-
     if not matchId then
-        print("raceTimeout: aucun matchId fourni, ignore.")
+        print(("[tougue] raceTimeout: aucun matchId fourni de %s"):format(tostring(src)))
         return
     end
 
     local match = matches[matchId]
     if not match then
-        print("raceTimeout: match introuvable pour matchId=" .. tostring(matchId))
+        print(("[tougue] raceTimeout: match introuvable %s"):format(tostring(matchId)))
         return
     end
 
-    -- Vérifier que src est participant
+    -- check participant
     local isParticipant = false
     for _, sid in ipairs(match.players) do
         if sid == src then isParticipant = true; break end
     end
     if not isParticipant then
-        print("raceTimeout: joueur " .. tostring(src) .. " n'est pas participant du match " .. tostring(matchId))
+        print(("[tougue] raceTimeout: %s n'est pas participant du match %s"):format(tostring(src), tostring(matchId)))
         return
     end
 
-    -- Donne la victoire à l'autre joueur si possible
+    -- give win to other if present
     local other = nil
     for _, sid in ipairs(match.players) do
         if sid ~= src then other = sid; break end
@@ -413,35 +437,32 @@ AddEventHandler("tougue:server:raceTimeout", function(matchId)
         for _, sid in ipairs(match.players) do
             TriggerClientEvent("tougue:client:roundEnd", sid, matchId, { winner = other, reason = "timeout", scores = match.scores })
         end
-        print(("Match %s: timeout - joueur %d remporte la manche (opposant %d a expiré)"):format(matchId, other, src))
+        print(("[tougue] Match %s: timeout - joueur %d remporte la manche (opposant %d a expiré)"):format(matchId, other, src))
     else
-        -- pas d'adversaire valide -> annule
         for _, sid in ipairs(match.players) do
             if isPlayerConnected(sid) then
                 TriggerClientEvent("tougue:client:notify", sid, "Match annulé (timeout, adversaire absent).")
             end
         end
-        print(("Match %s: timeout - annulation (opposant introuvable)"):format(matchId))
+        print(("[tougue] Match %s: timeout - annulation (opposant introuvable)"):format(matchId))
     end
 
-    -- Cleanup du match
     matches[matchId] = nil
 end)
 
+-- Optional: client-reported race finished (fallback) -------------
 RegisterNetEvent("tougue:server:raceFinished")
 AddEventHandler("tougue:server:raceFinished", function(matchId)
     local src = source
-    print(("raceFinished reçu de %s pour matchId=%s"):format(tostring(src), tostring(matchId)))
     if not matchId then return end
     local match = matches[matchId]
     if not match then return end
 
-    -- si tu veux traiter fin de course venant du client, fais la validation serveur ici
-    -- pour l'instant on considère que le client envoie raceFinished quand il a terminé.
     match.scores[src] = (match.scores[src] or 0) + 1
     for _, sid in ipairs(match.players) do
-        print(("Notifying player %d of round end, winner is %d"):format(sid, src))
         TriggerClientEvent("tougue:client:roundEnd", sid, matchId, { winner = src, reason = "client_finish", scores = match.scores })
     end
-    matches[matchId] = nil -- cleanup
+    matches[matchId] = nil
 end)
+
+-- End of server.lua

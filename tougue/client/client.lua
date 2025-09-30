@@ -1,33 +1,63 @@
--- client.lua
+-- client.lua (version complète, compatible avec le server.lua fourni)
 
+-- état global client
 local controlsBlocked = false
 local blockThread = nil
 local checkpointThread = nil
 local raceTimerThread = nil
 local activeMatch = nil
 
+-- COMMANDES -------------------------------------------------------
 RegisterCommand("tjoin", function()
     message("Vous entrez dans la queue de test.")
-    
-    -- On envoie le nom (pour affichage) ; l'identifiant serveur est fourni automatiquement (source côté serveur)
     local playerName = GetPlayerName(PlayerId())
     TriggerServerEvent("tougue:server:joinQueue", playerName)
 end)
 
+-- EVENTS ---------------------------------------------------------
 RegisterNetEvent("tougue:client:notify")
 AddEventHandler("tougue:client:notify", function(msg)
     message(msg)
 end)
 
-RegisterNetEvent("tougue:client:startMatch")
-AddEventHandler("tougue:client:startMatch", function(matchInfo)
-    message("Le jeu commence maintenant !")
+RegisterNetEvent("tougue:client:prepareRound")
+AddEventHandler("tougue:client:prepareRound", function(matchId, role, modelName, coordsTable, track)
+    -- stoppe proprement l'ancien round si besoin
+    if activeMatch and activeMatch.running then
+        activeMatch.running = false
+        Citizen.Wait(150)
+    end
 
+    local player = PlayerPedId()
+    message("Préparation du round (" .. tostring(role) .. ") ...")
 
-    -- log ou préparation côté client si besoin
+    -- spawn vehicle (freeze inside)
+    local veh = spawnCar(player, modelName, coordsTable)
+
+    -- bloquer controls pendant préparation
+    blockPlayerControls(true)
+
+    -- initialiser activeMatch
+    activeMatch = {
+        id = matchId,
+        role = role,
+        track = track,
+        nextIndex = 1,          -- index attendu côté client (avancé à la confirmation serveur)
+        running = true,
+        sentFor = {},           -- table pour éviter d'envoyer plusieurs fois le même checkpoint
+    }
+
+    -- debug print des checkpoints (utile au dev)
+    for i, cp in ipairs(track.checkpoints) do
+        print(("CP %d : x=%.2f y=%.2f z=%.2f r=%.2f"):format(i, cp.pos.x, cp.pos.y, cp.pos.z, cp.radius or 0))
+    end
+
+    -- notifier serveur qu'on est prêt
+    TriggerServerEvent("tougue:server:playerReady", matchId)
+
+    -- lancer la boucle des checkpoints (non bloquant)
+    startCheckpointLoop()
 end)
-
-
 
 RegisterNetEvent("tougue:client:startCountdown")
 AddEventHandler("tougue:client:startCountdown", function(seconds)
@@ -39,7 +69,7 @@ AddEventHandler("tougue:client:startCountdown", function(seconds)
     end
     message("Go !")
 
-    -- Débloquer le véhicule et les contrôles
+    -- debloquer véhicule + controls
     local player = PlayerPedId()
     local veh = GetVehiclePedIsIn(player, false)
     if veh and veh ~= 0 then
@@ -48,274 +78,99 @@ AddEventHandler("tougue:client:startCountdown", function(seconds)
     blockPlayerControls(false)
 end)
 
--- === client.lua ===
--- stocke l'état local de la course active
-local activeMatch = nil
-
-RegisterNetEvent("tougue:client:prepareRound")
-AddEventHandler("tougue:client:prepareRound", function(matchId, role, modelName, coordsTable, track)
-        -- Stoppe l'ancien round si besoin
-    if activeMatch and activeMatch.running then
-        activeMatch.running = false
-        Wait(100) -- laisse le temps aux threads de s'arrêter
-    end
-
-    local player = PlayerPedId()
-    message("Préparation du round (" .. tostring(role) .. ") ...")
-
-
-    local veh = spawnCar(player, modelName, coordsTable)
-
-    -- Bloquer les contrôles pendant la phase de préparation
-    blockPlayerControls(true)
-
-    -- stocker l'activeMatch (track contient .checkpoints)
-    activeMatch = {
-        id = matchId,
-        role = role,
-        track = track,
-        nextIndex = 1,
-        running = true
-    }
-
-    -- debug print des checkpoints
-    for i, cp in ipairs(track.checkpoints) do
-        print(("Checkpoint %d : x=%.2f, y=%.2f, z=%.2f, radius=%.2f"):format(
-            i, cp.pos.x, cp.pos.y, cp.pos.z, cp.radius or 0))
-    end
-
-    -- notifier le serveur qu'on est prêt
-    TriggerServerEvent("tougue:server:playerReady", matchId)
-
-    -- lancer la boucle d'affichage/détection des checkpoints
-    startCheckpointLoop()
-end)
-
--- boucle qui affiche un marker pour le prochain checkpoint et détecte le passage
-
-
--- handler de validation côté client (server confirme)
-RegisterNetEvent("tougue:client:checkpointValidated")
-AddEventHandler("tougue:client:checkpointValidated", function(matchId, index)
-    if not activeMatch or activeMatch.id ~= matchId then return end
-    -- avancer l'index localement seulement si serveur confirme
-    activeMatch.nextIndex = math.max(activeMatch.nextIndex, index + 1)
-    print("Client : checkpoint validé par le serveur : " .. tostring(index))
-end)
-
--- handler start timer côté client
 RegisterNetEvent("tougue:client:startRaceTimer")
 AddEventHandler("tougue:client:startRaceTimer", function(timeout)
-    -- Stoppe l'ancien timer s'il existe
-    local seconds = 3
-    seconds = tonumber(seconds) or 3
-    for i = seconds, 1, -1 do
-        print("Race timer starting in: " .. tostring(i))
-        Wait(1000)
-    end
+    -- lance la UI timer
     if not activeMatch then return end
-    timeout = tonumber(timeout) or 100000
+    timeout = tonumber(timeout) or 0
+    if timeout <= 0 then return end
+
+    -- stop ancien timer si présent (drapeau activeMatch.running gère l'arrêt)
     local startTime = GetGameTimer()
     local timeLeft = timeout
 
-    -- Timer limite et affichage
-    if timeout > 0 then
-        raceTimerThread = Citizen.CreateThread(function()
-            while activeMatch and activeMatch.running and timeLeft > 0 do
-                Citizen.Wait(0)
-                local now = GetGameTimer()
-                timeLeft = timeout - (now - startTime)
-                local sec = math.max(0, math.floor(timeLeft / 1000))
-                DrawTxt("Temps restant: " .. sec .. "s", 0.02, 0.02)
-            end
-            if activeMatch and activeMatch.running and timeLeft <= 0 then
-                message("Temps écoulé !")
-                if activeMatch and activeMatch.id then
-                    TriggerServerEvent("tougue:server:raceTimeout", activeMatch.id)
-                else
-                    TriggerServerEvent("tougue:server:raceTimeout", nil)
-                end
-                activeMatch.running = false
-            end
-            raceTimerThread = nil
-        end)
-    end
-end)
-
-
--- handler fin de course côté client
-RegisterNetEvent("tougue:client:roundEnd")
-AddEventHandler("tougue:client:roundEnd", function(matchId, result)
-    if not activeMatch or activeMatch.id ~= matchId then return end
-    activeMatch.running = false
-    blockPlayerControls(false)
-    message("Round terminé ! Gagnant : " .. tostring(result.winner))
     if raceTimerThread then
-        TerminateThread(raceTimerThread)
+        -- on laisse l'ancien thread se terminer (flag), on démarre un nouveau
         raceTimerThread = nil
     end
-    -- cleanup local (supprime blips si tu en as créés)
-    activeMatch = nil
+
+    raceTimerThread = Citizen.CreateThread(function()
+        while activeMatch and activeMatch.running and timeLeft > 0 do
+            Citizen.Wait(250)
+            local now = GetGameTimer()
+            timeLeft = timeout - (now - startTime)
+            local sec = math.max(0, math.floor(timeLeft / 1000))
+            DrawTxt("Temps restant: " .. sec .. "s", 0.02, 0.02)
+        end
+
+        if activeMatch and activeMatch.running and timeLeft <= 0 then
+            message("Temps écoulé !")
+            if activeMatch and activeMatch.id then
+                TriggerServerEvent("tougue:server:raceTimeout", activeMatch.id)
+            else
+                TriggerServerEvent("tougue:server:raceTimeout", nil)
+            end
+            if activeMatch then activeMatch.running = false end
+        end
+
+        raceTimerThread = nil
+    end)
 end)
 
+-- confirmation serveur d'un checkpoint validé
+RegisterNetEvent("tougue:client:checkpointValidated")
+AddEventHandler("tougue:client:checkpointValidated", function(matchId, index)
+    if not activeMatch or activeMatch.id ~= matchId then
+        -- peut arriver si on a changé de round; ignore proprement
+        print(("Client: checkpointValidated reçu pour match %s mais activeMatch=%s"):format(tostring(matchId), tostring(activeMatch and activeMatch.id or "nil")))
+        return
+    end
+    activeMatch.nextIndex = math.max(activeMatch.nextIndex, index + 1)
+    if activeMatch.sentFor then activeMatch.sentFor[index] = nil end
+    print(("Client: checkpoint confirmé par serveur (%s) index=%d -> next=%d"):format(matchId, index, activeMatch.nextIndex))
+end)
+
+-- fin de round (server notifie)
+RegisterNetEvent("tougue:client:roundEnd")
+AddEventHandler("tougue:client:roundEnd", function(matchId, result)
+    -- vérifier que c'est bien le match en cours
+    if not activeMatch or activeMatch.id ~= matchId then
+        print(("Client: roundEnd reçu pour match %s mais activeMatch=%s"):format(tostring(matchId), tostring(activeMatch and activeMatch.id or "nil")))
+        return
+    end
+
+    -- arrêter proprement les threads
+    activeMatch.running = false
+    blockPlayerControls(false)
+
+    message("Round terminé ! Gagnant : " .. tostring(result.winner))
+
+    -- attendre un court délai pour permettre au serveur d'envoyer nextRound
+    Citizen.CreateThread(function()
+        Wait(200)
+        -- cleanup local ; si le serveur démarre le prochain round il enverra prepareRound qui recréera activeMatch
+        activeMatch = nil
+        checkpointThread = nil
+    end)
+end)
+
+-- fin du match
 RegisterNetEvent("tougue:client:matchEnd")
 AddEventHandler("tougue:client:matchEnd", function(matchId, result)
-    message("Le match est terminé ! Gagnant : " .. tostring(result.winner) .."Pour la course :"..tostring(matchId))
-    --- Ici tu peux faire un cleanup global si besoin
-    --- activeMatch = nil
-    --- tp to un endroit sûr
+    message("Match terminé ! Vainqueur : " .. tostring(result.winner))
+    -- cleanup local
+    if activeMatch and activeMatch.id == matchId then
+        activeMatch.running = false
+        activeMatch = nil
+    end
 end)
 
-
--- Affichage simple en HUD
+-- UI / Utils -----------------------------------------------------
 function message(msg)
     BeginTextCommandThefeedPost('STRING')
     AddTextComponentSubstringPlayerName(msg)
     ThefeedSetNextPostBackgroundColor(140)
     EndTextCommandThefeedPostTicker(false, true)
-end
-
--- Spawn safe d'un vehicle et mise dedans
-function spawnCar(playerPed, modelName, coords)
-    local veh = GetVehiclePedIsIn(player, false)
-    local lastVeh = GetLastDrivenVehicle()
-    veh = lastVeh
-    if veh and veh ~= 0 then
-        DeleteEntity(veh)
-    end
-    if not modelName or not coords then
-        print("spawnCar: modelName ou coords manquant")
-        return
-    end
-
-    local modelHash = GetHashKey(modelName)
-
-    -- Charger le modèle
-    RequestModel(modelHash)
-    local timeout = 5000
-    local tStart = GetGameTimer()
-    while not HasModelLoaded(modelHash) and (GetGameTimer() - tStart) < timeout do
-        Wait(10)
-    end
-
-    if not HasModelLoaded(modelHash) then
-        print("Impossible de charger le modèle: " .. tostring(modelName))
-        return
-    end
-
-    -- Créer le véhicule
-    local heading = coords.heading or 0.0
-    local vehicle = CreateVehicle(modelHash, coords.x, coords.y, coords.z, heading, true, false)
-
-    if not vehicle or vehicle == 0 then
-        print("Erreur: véhicule non créé.")
-        SetModelAsNoLongerNeeded(modelHash)
-        return
-    end
-
-    -- Personnalisation basique
-    fullCustom(playerPed, vehicle)
-
-    -- Mettre le joueur dans le véhicule
-    SetPedIntoVehicle(playerPed, vehicle, -1)
-
-    -- ⚠️ Ici on freeze, mais pour le mode Touge on NE DÉFREEZE PAS directement.
-    -- Le serveur va gérer le countdown et débloquer après.
-    FreezeEntityPosition(vehicle, true)
-
-    -- Libération du modèle
-    SetModelAsNoLongerNeeded(modelHash)
-
-    print("Véhicule " .. tostring(modelName) .. " créé et vous êtes monté dedans.")
-    return vehicle
-end
-
-
-
-function startCheckpointLoop()
-    if checkpointThread then
-        TerminateThread(checkpointThread)
-        checkpointThread = nil
-    end
-    checkpointThread = Citizen.CreateThread(function()
-        while activeMatch and activeMatch.running and activeMatch.nextIndex <= #activeMatch.track.checkpoints do
-            Wait(100)
-            local playerPed = PlayerPedId()
-            local playerPos = GetEntityCoords(playerPed)
-            local idx = activeMatch.nextIndex
-            local cp = activeMatch.track.checkpoints[idx]
-            if not cp then break end
-
-            -- DrawMarker (toujours ok)
-            DrawMarker(6, cp.pos.x, cp.pos.y, cp.pos.z + 1.0, 0,0,0, 0,0,0, cp.radius*2.0, cp.radius*2.0, 1.0, 0,100,255, 90, false, true, 2, nil, nil, false)
-
-            local dist = #(playerPos - vector3(cp.pos.x, cp.pos.y, cp.pos.z))
-            if dist <= (cp.radius or 5.0) then
-                playCheckpointSound()
-                message("Checkpoint " .. idx .. " atteint !")
-                TriggerServerEvent("tougue:server:checkpointPassed", activeMatch.id, idx, { x = playerPos.x, y = playerPos.y, z = playerPos.z }, GetGameTimer())
-                print("Client: checkpoint " .. idx .. " passé, notif serveur.")
-                activeMatch.nextIndex = activeMatch.nextIndex + 1 -- AJOUTE CETTE LIGNE
-                Citizen.Wait(800) -- anti-double
-            end
-        end
-        checkpointThread = nil
-    end)
-end
-
-function fullCustom(player, veh)
-    if veh and veh ~= 0 then
-        SetVehicleModKit(veh, 0)
-
-        -- Moteur max (modType 11)
-        local engineMods = GetNumVehicleMods(veh, 11)
-        if engineMods > 0 then
-            SetVehicleMod(veh, 11, engineMods - 1, false)
-        end
-
-        -- Transmission max (modType 13)
-        local transMods = GetNumVehicleMods(veh, 13)
-        if transMods > 0 then
-            SetVehicleMod(veh, 13, transMods - 1, false)
-        end
-
-        -- Suspension max (modType 15)
-        local suspMods = GetNumVehicleMods(veh, 15)
-        if suspMods > 0 then
-            SetVehicleMod(veh, 15, suspMods - 1, false)
-        end
-
-        -- Turbo
-        ToggleVehicleMod(veh, 18, true)
-
-        -- Couleur rouge (primary, secondary)
-        SetVehicleColours(veh, 27, 27)
-        print("Véhicule full custom rouge !")
-    else
-        print("fullCustom: véhicule invalide.")
-    end
-end
-
-function blockPlayerControls(enable)
-    controlsBlocked = enable
-    if enable then
-        if blockThread then return end
-        blockThread = Citizen.CreateThread(function()
-            while controlsBlocked do
-                -- désactiver mouvements et actions utiles (tu peux ajuster)
-                DisableControlAction(0, 30, true) -- mouvement gauche/droite
-                DisableControlAction(0, 31, true) -- mouvement avant/arrière
-                DisableControlAction(0, 21, true) -- sprint
-                DisableControlAction(0, 24, true) -- tir
-                DisableControlAction(0, 75, true) -- quitter véhicule
-                DisableControlAction(0, 23, true) -- entrée menu
-                Wait(0)
-            end
-            blockThread = nil
-        end)
-    else
-        controlsBlocked = false
-    end
 end
 
 function DrawTxt(text, x, y)
@@ -334,6 +189,136 @@ end
 
 function playCheckpointSound()
     PlaySoundFrontend(-1, "CHECKPOINT_NORMAL", "HUD_MINI_GAME_SOUNDSET", true)
-    
 end
 
+-- SPAWN VEHICLE --------------------------------------------------
+function spawnCar(playerPed, modelName, coords)
+    if not modelName or not coords then
+        print("spawnCar: modelName ou coords manquant")
+        return
+    end
+
+    local modelHash = GetHashKey(modelName)
+    RequestModel(modelHash)
+    local timeout = 5000
+    local tStart = GetGameTimer()
+    while not HasModelLoaded(modelHash) and (GetGameTimer() - tStart) < timeout do
+        Wait(10)
+    end
+
+    if not HasModelLoaded(modelHash) then
+        print("Impossible de charger le modèle: " .. tostring(modelName))
+        return
+    end
+
+    local heading = coords.heading or 0.0
+    local vehicle = CreateVehicle(modelHash, coords.x, coords.y, coords.z, heading, true, false)
+    if not vehicle or vehicle == 0 then
+        print("Erreur: véhicule non créé.")
+        SetModelAsNoLongerNeeded(modelHash)
+        return
+    end
+
+    fullCustom(playerPed, vehicle)
+
+    SetPedIntoVehicle(playerPed, vehicle, -1)
+    FreezeEntityPosition(vehicle, true)
+    SetModelAsNoLongerNeeded(modelHash)
+
+    print("Véhicule " .. tostring(modelName) .. " créé et vous êtes monté dedans.")
+    return vehicle
+end
+
+function fullCustom(player, veh)
+    if not veh or veh == 0 then return end
+    SetVehicleModKit(veh, 0)
+    local engineMods = GetNumVehicleMods(veh, 11)
+    if engineMods > 0 then SetVehicleMod(veh, 11, engineMods - 1, false) end
+    local transMods = GetNumVehicleMods(veh, 13)
+    if transMods > 0 then SetVehicleMod(veh, 13, transMods - 1, false) end
+    local suspMods = GetNumVehicleMods(veh, 15)
+    if suspMods > 0 then SetVehicleMod(veh, 15, suspMods - 1, false) end
+    ToggleVehicleMod(veh, 18, true)
+    SetVehicleColours(veh, 27, 27)
+end
+
+-- CONTROLS BLOCK -------------------------------------------------
+function blockPlayerControls(enable)
+    controlsBlocked = enable
+    if enable then
+        if blockThread then return end
+        blockThread = Citizen.CreateThread(function()
+            while controlsBlocked do
+                DisableControlAction(0, 30, true) -- left/right
+                DisableControlAction(0, 31, true) -- forward/back
+                DisableControlAction(0, 21, true) -- sprint
+                DisableControlAction(0, 24, true) -- fire
+                DisableControlAction(0, 75, true) -- leave vehicle
+                DisableControlAction(0, 23, true) -- enter
+                Wait(0)
+            end
+            blockThread = nil
+        end)
+    else
+        controlsBlocked = false
+    end
+end
+
+-- CHECKPOINT LOOP ------------------------------------------------
+function startCheckpointLoop()
+    -- signaler à l'ancienne boucle de s'arrêter et attendre sa fin
+    if checkpointThread then
+        if activeMatch then activeMatch.running = false end
+        Wait(150)
+        -- on ne kill pas la thread, on attend qu'elle termine proprement
+    end
+
+    -- si activeMatch est déjà nil, on ne lance rien
+    if not activeMatch then return end
+
+    -- capture de la référence locale pour éviter les races si activeMatch est remplacée
+    local match = activeMatch
+
+    checkpointThread = Citizen.CreateThread(function()
+        while match and match.running and match.nextIndex <= #match.track.checkpoints do
+            Wait(100)
+            -- double-guard si match a été nulled ailleurs
+            if not match or not match.running then break end
+
+            local playerPed = PlayerPedId()
+            local playerPos = GetEntityCoords(playerPed)
+            local idx = match.nextIndex
+            local cp = match.track.checkpoints[idx]
+            if not cp then break end
+
+            -- draw marker
+            DrawMarker(6, cp.pos.x, cp.pos.y, cp.pos.z + 1.0, 0,0,0, 0,0,0, cp.radius*2.0, cp.radius*2.0, 1.0, 0,100,255, 90, false, true, 2, nil, nil, false)
+
+            local dist = #(playerPos - vector3(cp.pos.x, cp.pos.y, cp.pos.z))
+            if dist <= (cp.radius or 5.0) then
+                -- anti-spam local
+                if match.sentFor and match.sentFor[idx] then
+                    -- déjà envoyé, on attend confirmation
+                else
+                    -- joue son + notif locale
+                    playCheckpointSound()
+                    message("Checkpoint " .. idx .. " atteint (envoi serveur)...")
+                    TriggerServerEvent("tougue:server:checkpointPassed", match.id, idx, { x = playerPos.x, y = playerPos.y, z = playerPos.z }, GetGameTimer())
+                    match.sentFor = match.sentFor or {}
+                    match.sentFor[idx] = true
+                end
+            end
+        end
+        -- assure la nullification du thread local
+        checkpointThread = nil
+    end)
+end
+
+-- Clean up on resource stop / manual cleanup (optional)
+AddEventHandler('onClientResourceStop', function(resourceName)
+    if resourceName ~= GetCurrentResourceName() then return end
+    if activeMatch then activeMatch.running = false end
+    controlsBlocked = false
+end)
+
+-- End of client.lua
