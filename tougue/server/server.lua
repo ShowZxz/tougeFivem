@@ -40,7 +40,13 @@ local function createMatchWithRandomTrack(playersInMatch)
         chosenVehicle = "adder" -- fallback si aucune restriction
     end
 
-    -- playersInMatch : table contenant { {id=serverid, name=...}, ... }
+    -- playersInMatch : table contenant { {id=serverid, name=...}, ... } Shuffle pour randomiser les rôles
+    math.randomseed(os.time())
+    for i = #playersInMatch, 2, -1 do
+        local j = math.random(i)
+        playersInMatch[i], playersInMatch[j] = playersInMatch[j], playersInMatch[i]
+    end
+    -- rôles : 1er = lead, 2e = chaser
     local lead = playersInMatch[1].id
     local chaser = playersInMatch[2].id
 
@@ -55,7 +61,10 @@ local function createMatchWithRandomTrack(playersInMatch)
         currentCheckpoint = {}, -- pour stocker par joueur si besoin
         scores = {},
         createdAt = GetGameTimer(),
-        timeout = track.meta and track.meta.timeLimit or 0
+        timeout = track.meta and track.meta.timeLimit or 0,
+        round = 1,         -- numéro du round en cours
+        maxRounds = 2,     -- nombre total de rounds (lead/chaser inversés)
+        roles = { [lead] = "lead", [chaser] = "chaser" } -- pour savoir qui est quoi
     }
 
     -- init ready & scores & currentCheckpoint
@@ -79,6 +88,30 @@ local function createMatchWithRandomTrack(playersInMatch)
 
     print(("Match %s créé sur la track %s avec vehicule %s"):format(matchId, track.id, tostring(chosenVehicle)))
     return matchId
+end
+
+function startNextRound(match)
+    -- Inverser les rôles
+    print("Démarrage du round " .. tostring(match.round + 1) .. " du match " .. tostring(match.id) .. ", inversion des rôles.")
+    local lead, chaser = match.players[2], match.players[1]
+    match.players = { lead, chaser }
+    match.roles = { [lead] = "lead", [chaser] = "chaser" }
+    match.currentCheckpoint = { [lead] = 1, [chaser] = 1 }
+    match.ready = { [lead] = false, [chaser] = false }
+    match.round = match.round + 1
+    print("startNextRound : currentCheckpoint reset, ready reset" ..match.currentCheckpoint[lead].." "..match.currentCheckpoint[chaser])
+    -- reset lastCheckpointTime
+    -- Envoyer prepareRound aux deux joueurs
+    local leadCoords = match.track.start
+    local chaserCoords = { x = match.track.start.x + 2.0, y = match.track.start.y + 2.0, z = match.track.start.z, heading = match.track.start.heading }
+    TriggerClientEvent("tougue:client:prepareRound", lead, match.id, "lead", "adder", leadCoords, match.track)
+    TriggerClientEvent("tougue:client:prepareRound", chaser, match.id, "chaser", "adder", chaserCoords, match.track)
+    Wait(1000)
+    -- Attendre les ready avec timeout
+        for _, sid in ipairs(match.players) do
+        TriggerClientEvent("tougue:client:startCountdown", sid, 3) -- countdown 3 secondes
+        TriggerClientEvent("tougue:client:startRaceTimer", sid, match.timeout or 100000) -- start
+    end
 end
 
 -- n'oublie pas d'initialiser le seed random (au démarrage du script)
@@ -263,6 +296,7 @@ AddEventHandler("tougue:server:checkpointPassed", function(matchId, checkpointIn
 
     -- vérifie l'ordre attendu
     local expectedIndex = match.currentCheckpoint[src] or 1
+    print("Checkpoint expecté = "..tostring(expectedIndex).."currentCheckpoint = "..tostring(checkpointIndex))
     if checkpointIndex ~= expectedIndex then
         print(("[SECURITE] %s essayé de valider checkpoint %d (attendu %d)"):format(tostring(src), checkpointIndex, expectedIndex))
         TriggerClientEvent("tougue:client:notify", src, "Checkpoint rejeté : ordre incorrect.")
@@ -316,21 +350,98 @@ AddEventHandler("tougue:server:checkpointPassed", function(matchId, checkpointIn
             TriggerClientEvent("tougue:client:roundEnd", sid, matchId, { winner = src, scores = match.scores })
         end
 
+        if match.round < match.maxRounds then
+    -- Relancer un round avec inversion des rôles
+        startNextRound(match)
+        else
+    -- Fin du match, calcul du vainqueur
+            local scoreLead = match.scores[match.players[1]] or 0
+            local scoreChaser = match.scores[match.players[2]] or 0
+            local winner
+            if scoreLead > scoreChaser then
+                winner = match.players[1]
+            elseif scoreChaser > scoreLead then
+                winner = match.players[2]
+            else
+                winner = nil -- égalité
+            end
+            for _, sid in ipairs(match.players) do
+                TriggerClientEvent("tougue:client:matchEnd", sid, match.id, { scores = match.scores, winner = winner })
+            end
+            matches[match.id] = nil -- cleanup
+        end
         -- gestion round/next steps (reset, swap roles, etc.) à implémenter ici
         -- pour le moment on fait cleanup simplifié
         -- matches[matchId] = nil -- si tu veux nettoyer tout de suite
     end
 end)
 
-RegisterNetEvent("tougue:server:raceTimeout", function()
+RegisterNetEvent("tougue:server:raceTimeout")
+AddEventHandler("tougue:server:raceTimeout", function(matchId)
     local src = source
-    local playerName = GetPlayerName(src)
-    print(playerName .. " n'a pas terminé la course à temps.")
-    playerProgress[src] = nil -- reset pour une prochaine course
+    print(("raceTimeout reçu de %s pour matchId=%s"):format(tostring(src), tostring(matchId)))
+
+    if not matchId then
+        print("raceTimeout: aucun matchId fourni, ignore.")
+        return
+    end
+
+    local match = matches[matchId]
+    if not match then
+        print("raceTimeout: match introuvable pour matchId=" .. tostring(matchId))
+        return
+    end
+
+    -- Vérifier que src est participant
+    local isParticipant = false
+    for _, sid in ipairs(match.players) do
+        if sid == src then isParticipant = true; break end
+    end
+    if not isParticipant then
+        print("raceTimeout: joueur " .. tostring(src) .. " n'est pas participant du match " .. tostring(matchId))
+        return
+    end
+
+    -- Donne la victoire à l'autre joueur si possible
+    local other = nil
+    for _, sid in ipairs(match.players) do
+        if sid ~= src then other = sid; break end
+    end
+
+    if other and isPlayerConnected(other) then
+        match.scores[other] = (match.scores[other] or 0) + 1
+        for _, sid in ipairs(match.players) do
+            TriggerClientEvent("tougue:client:roundEnd", sid, matchId, { winner = other, reason = "timeout", scores = match.scores })
+        end
+        print(("Match %s: timeout - joueur %d remporte la manche (opposant %d a expiré)"):format(matchId, other, src))
+    else
+        -- pas d'adversaire valide -> annule
+        for _, sid in ipairs(match.players) do
+            if isPlayerConnected(sid) then
+                TriggerClientEvent("tougue:client:notify", sid, "Match annulé (timeout, adversaire absent).")
+            end
+        end
+        print(("Match %s: timeout - annulation (opposant introuvable)"):format(matchId))
+    end
+
+    -- Cleanup du match
+    matches[matchId] = nil
 end)
 
-RegisterNetEvent("tougue:server:raceFinished", function()
+RegisterNetEvent("tougue:server:raceFinished")
+AddEventHandler("tougue:server:raceFinished", function(matchId)
     local src = source
-    local playerName = GetPlayerName(src)
-    print(playerName .. " a terminé la course avec succès.")
-    end)
+    print(("raceFinished reçu de %s pour matchId=%s"):format(tostring(src), tostring(matchId)))
+    if not matchId then return end
+    local match = matches[matchId]
+    if not match then return end
+
+    -- si tu veux traiter fin de course venant du client, fais la validation serveur ici
+    -- pour l'instant on considère que le client envoie raceFinished quand il a terminé.
+    match.scores[src] = (match.scores[src] or 0) + 1
+    for _, sid in ipairs(match.players) do
+        print(("Notifying player %d of round end, winner is %d"):format(sid, src))
+        TriggerClientEvent("tougue:client:roundEnd", sid, matchId, { winner = src, reason = "client_finish", scores = match.scores })
+    end
+    matches[matchId] = nil -- cleanup
+end)

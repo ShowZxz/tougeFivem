@@ -2,6 +2,8 @@
 
 local controlsBlocked = false
 local blockThread = nil
+local checkpointThread = nil
+local raceTimerThread = nil
 local activeMatch = nil
 
 RegisterCommand("tjoin", function()
@@ -52,6 +54,12 @@ local activeMatch = nil
 
 RegisterNetEvent("tougue:client:prepareRound")
 AddEventHandler("tougue:client:prepareRound", function(matchId, role, modelName, coordsTable, track)
+        -- Stoppe l'ancien round si besoin
+    if activeMatch and activeMatch.running then
+        activeMatch.running = false
+        Wait(100) -- laisse le temps aux threads de s'arrêter
+    end
+
     local player = PlayerPedId()
     message("Préparation du round (" .. tostring(role) .. ") ...")
 
@@ -98,35 +106,38 @@ end)
 -- handler start timer côté client
 RegisterNetEvent("tougue:client:startRaceTimer")
 AddEventHandler("tougue:client:startRaceTimer", function(timeout)
+    -- Stoppe l'ancien timer s'il existe
     local seconds = 3
     seconds = tonumber(seconds) or 3
     for i = seconds, 1, -1 do
         print("Race timer starting in: " .. tostring(i))
-        --PlaySoundFrontend(-1, "NAV_UP_DOWN", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
         Wait(1000)
-    end    if not activeMatch then return end
+    end
+    if not activeMatch then return end
     timeout = tonumber(timeout) or 100000
     local startTime = GetGameTimer()
     local timeLeft = timeout
 
     -- Timer limite et affichage
     if timeout > 0 then
-        Citizen.CreateThread(function()
+        raceTimerThread = Citizen.CreateThread(function()
             while activeMatch and activeMatch.running and timeLeft > 0 do
                 Citizen.Wait(0)
                 local now = GetGameTimer()
                 timeLeft = timeout - (now - startTime)
-                -- Affiche le temps restant en haut à gauche
                 local sec = math.max(0, math.floor(timeLeft / 1000))
                 DrawTxt("Temps restant: " .. sec .. "s", 0.02, 0.02)
             end
             if activeMatch and activeMatch.running and timeLeft <= 0 then
                 message("Temps écoulé !")
-                TriggerServerEvent("tougue:server:raceTimeout")
-                if activeMatch then
-                    activeMatch.running = false
+                if activeMatch and activeMatch.id then
+                    TriggerServerEvent("tougue:server:raceTimeout", activeMatch.id)
+                else
+                    TriggerServerEvent("tougue:server:raceTimeout", nil)
                 end
+                activeMatch.running = false
             end
+            raceTimerThread = nil
         end)
     end
 end)
@@ -139,8 +150,20 @@ AddEventHandler("tougue:client:roundEnd", function(matchId, result)
     activeMatch.running = false
     blockPlayerControls(false)
     message("Round terminé ! Gagnant : " .. tostring(result.winner))
+    if raceTimerThread then
+        TerminateThread(raceTimerThread)
+        raceTimerThread = nil
+    end
     -- cleanup local (supprime blips si tu en as créés)
     activeMatch = nil
+end)
+
+RegisterNetEvent("tougue:client:matchEnd")
+AddEventHandler("tougue:client:matchEnd", function(matchId, result)
+    message("Le match est terminé ! Gagnant : " .. tostring(result.winner) .."Pour la course :"..tostring(matchId))
+    --- Ici tu peux faire un cleanup global si besoin
+    --- activeMatch = nil
+    --- tp to un endroit sûr
 end)
 
 
@@ -207,30 +230,36 @@ function spawnCar(playerPed, modelName, coords)
     return vehicle
 end
 
+
+
 function startCheckpointLoop()
-    Citizen.CreateThread(function()
+    if checkpointThread then
+        TerminateThread(checkpointThread)
+        checkpointThread = nil
+    end
+    checkpointThread = Citizen.CreateThread(function()
         while activeMatch and activeMatch.running and activeMatch.nextIndex <= #activeMatch.track.checkpoints do
-            Wait(0) -- boucle légère
+            Wait(100)
             local playerPed = PlayerPedId()
             local playerPos = GetEntityCoords(playerPed)
             local idx = activeMatch.nextIndex
             local cp = activeMatch.track.checkpoints[idx]
             if not cp then break end
 
-            -- Draw marker (plus léger que DrawMarker every frame, mais suffisant)
+            -- DrawMarker (toujours ok)
             DrawMarker(6, cp.pos.x, cp.pos.y, cp.pos.z + 1.0, 0,0,0, 0,0,0, cp.radius*2.0, cp.radius*2.0, 1.0, 0,100,255, 90, false, true, 2, nil, nil, false)
 
             local dist = #(playerPos - vector3(cp.pos.x, cp.pos.y, cp.pos.z))
             if dist <= (cp.radius or 5.0) then
-                -- joue le son + notification locale
                 playCheckpointSound()
                 message("Checkpoint " .. idx .. " atteint !")
-                -- envoie au serveur : matchId, index, position, timestamp
                 TriggerServerEvent("tougue:server:checkpointPassed", activeMatch.id, idx, { x = playerPos.x, y = playerPos.y, z = playerPos.z }, GetGameTimer())
-                -- attendre un petit délai pour éviter doublons
-                Citizen.Wait(800)
+                print("Client: checkpoint " .. idx .. " passé, notif serveur.")
+                activeMatch.nextIndex = activeMatch.nextIndex + 1 -- AJOUTE CETTE LIGNE
+                Citizen.Wait(800) -- anti-double
             end
         end
+        checkpointThread = nil
     end)
 end
 
@@ -307,56 +336,4 @@ function playCheckpointSound()
     PlaySoundFrontend(-1, "CHECKPOINT_NORMAL", "HUD_MINI_GAME_SOUNDSET", true)
     
 end
-function drawCheckpoint(trackCheckpoint)
-    print("Dessin des checkpoints pour la course: " .. trackCheckpoint.name)
-    local player = PlayerPedId()
-    local radius = 10.0
-    local checkpointType = 6 
-    local currentCheckpointIndex = 1
-    local checkpoints = trackCheckpoint.checkpoints
-    local timeoutRace = trackCheckpoint.meta.timeLimit or 100000
-    local raceActive = true
-    local startTime = GetGameTimer()
-    local timeLeft = timeoutRace
-    print("Timeout de la course: " .. timeoutRace .. " ms")
-    -- Timer limite et affichage
-    if timeoutRace > 0 then
-        Citizen.CreateThread(function()
-            while raceActive and timeLeft > 0 do
-                Citizen.Wait(0)
-                local now = GetGameTimer()
-                timeLeft = timeoutRace - (now - startTime)
-                -- Affiche le temps restant en haut à gauche
-                local sec = math.max(0, math.floor(timeLeft / 1000))
-                DrawTxt("Temps restant: " .. sec .. "s", 0.02, 0.02)
-                print("Temps restant: " .. sec .. "s", 0.02, 0.02)
-                
-            end
-            if raceActive and timeLeft <= 0 then
-                message("Temps écoulé !")
-                TriggerServerEvent("tougue:server:raceTimeout")
-                raceActive = false
-            end
-        end)
-    end
 
-    Citizen.CreateThread(function()
-        while currentCheckpointIndex <= #checkpoints and raceActive do
-            Citizen.Wait(0)
-            local cp = checkpoints[currentCheckpointIndex]
-            DrawMarker(checkpointType, cp.pos.x, cp.pos.y, cp.pos.z+3, 0, 0, 0, 0, 0, 0, cp.radius, cp.radius, cp.radius, 0, 0, 255, 100, false, true, 2, nil, nil, false)
-            local distance = #(GetEntityCoords(player) - vector3(cp.pos.x, cp.pos.y, cp.pos.z))
-            if distance < cp.radius then
-                message("Checkpoint " .. currentCheckpointIndex .. " atteint !")
-                playCheckpointSound()
-                TriggerServerEvent("tougue:server:checkpointPassed", currentCheckpointIndex)
-                currentCheckpointIndex = currentCheckpointIndex + 1
-                Wait(1000)
-            end
-        end
-        if raceActive then
-            message("Course terminée !")
-        end
-        raceActive = false
-    end)
-end
