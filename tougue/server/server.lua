@@ -17,7 +17,7 @@ local POS_INTERVAL_MIN = 250         -- ms : ignore updates plus rapides
 local MAX_SPEED_THRESHOLD = 120      -- m/s (valeur conservatrice pour détecter teleport)
 local MAX_DIST = 200                 -- mètres -> escape threshold distance
 local ESCAPE_THRESHOLD = 6000        -- ms -> si distance > MAX_DIST pendant cette durée -> lead gagne
-local CATCH_DIST = 2                 -- m -> si chaser à moins de CATCH_DIST -> chaser gagne
+local CATCH_DIST = 20                 -- m -> si chaser à moins de CATCH_DIST -> chaser gagne
 local CATCH_HOLD = 400               -- ms -> (optionnel) ms à rester proche pour valider catch
 local USE_HORIZONTAL_ONLY = true   -- true = ignore dz dans la distance (utile pour ponts/hauteur)
 local POS_RECENT_THRESHOLD = 3000  -- ms : qu'on juge une pos "récente"
@@ -175,6 +175,10 @@ function startNextRound(match)
         end
         print(("[tougue] match %s : timeout ready au startNextRound, annulation."):format(match.id))
         matches[match.id] = nil
+        match._isCaught = {}
+        match._isAhead = {}
+        match._catchStart = {}
+        match._overtakeStart = {}
         return
     end
 
@@ -220,6 +224,10 @@ local function handleRoundWin(match, winnerSid, reason)
         Citizen.CreateThread(function()
             Wait(3000)
             matches[match.id] = nil
+            match._isCaught = {}
+            match._isAhead = {}
+            match._catchStart = {}
+            match._overtakeStart = {}
         end)
     end
 end
@@ -665,6 +673,14 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
                 match._overtakeStart[chaserSid] = now
             elseif (now - match._overtakeStart[chaserSid]) >= OVERTAKE_HOLD then
                 print(("[tougue] Match %s: chaser %d overtook lead %d (proj=%.2f)"):format(matchId, chaserSid, leadSid, proj))
+                match._isAhead[chaserSid] = true
+                -- notify once
+                if isPlayerConnected(chaserSid) then
+                    TriggerClientEvent("tougue:client:notifyOvertake", chaserSid, match.id, { other = leadSid })
+                end
+                if isPlayerConnected(leadSid) then
+                    TriggerClientEvent("tougue:client:notifyOvertaken", leadSid, match.id, { other = chaserSid })
+                end
                 handleRoundWin(match, chaserSid, "overtake")
                 return
             end
@@ -673,19 +689,51 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
         end
     end
 
-    -- -------- CATCH : si chaser très proche (collision) --------
-    if dist <= CATCH_DIST then
-        match._catchStart = match._catchStart or {}
-        if not match._catchStart[chaserSid] then
-            match._catchStart[chaserSid] = now
-        elseif (now - match._catchStart[chaserSid]) >= CATCH_HOLD then
-            print(("[tougue] Match %s: chaser %d caught lead %d (dist=%.2f)"):format(matchId, chaserSid, leadSid, dist))
-            handleRoundWin(match, chaserSid, "catch")
-            return
+-- -------- CATCH (notification par transition) --------
+-- flags init (assure)
+match._isCaught = match._isCaught or {}   -- bool par chaserSid
+match._isAhead = match._isAhead or {}     -- bool par chaserSid (overtake confirmé)
+match._catchStart = match._catchStart or {} -- pour hold
+-- caughtCooldown supprimé: on notifie sur transitions
+
+-- si proche => potentielle "rattrapé"
+if dist <= CATCH_DIST then
+    -- démarrer le timer de maintien (CATCH_HOLD) si pas démarré
+    if not match._catchStart[chaserSid] then
+        match._catchStart[chaserSid] = now
+    elseif (now - match._catchStart[chaserSid]) >= CATCH_HOLD then
+        -- si l'état "caught" n'est pas déjà actif -> on notifie l'entrée
+        if not match._isCaught[chaserSid] then
+            match._isCaught[chaserSid] = true
+            -- notifie chaser (vous êtes collé) et lead (vous êtes rattrapé)
+            if isPlayerConnected(chaserSid) then
+                TriggerClientEvent("tougue:client:notifyCatch", chaserSid, match.id, { other = leadSid })
+            end
+            if isPlayerConnected(leadSid) then
+                TriggerClientEvent("tougue:client:notifyCaughtBy", leadSid, match.id, { other = chaserSid })
+            end
+            print(("[tougue] Match %s: chaser %d état CATCH=true (dist=%.2f)"):format(matchId, chaserSid, dist))
         end
+    end
+else
+    -- si ils s'éloignent et que l'état 'caught' était actif -> notifier sortie (une seule fois)
+    if match._isCaught[chaserSid] then
+        match._isCaught[chaserSid] = nil
+        -- clear timer
+        match._catchStart[chaserSid] = nil
+        -- notifie chaser & lead qu'ils ne sont plus collés / qu'il y a separation
+        if isPlayerConnected(chaserSid) then
+            TriggerClientEvent("tougue:client:notifyCatchLost", chaserSid, match.id, { other = leadSid })
+        end
+        if isPlayerConnected(leadSid) then
+            TriggerClientEvent("tougue:client:notifyNoLongerCaught", leadSid, match.id, { other = chaserSid })
+        end
+        print(("[tougue] Match %s: chaser %d état CATCH=false (dist=%.2f)"):format(matchId, chaserSid, dist))
     else
+        -- assure qu'on reset le timer si juste pas encore atteint hold
         if match._catchStart then match._catchStart[chaserSid] = nil end
     end
+end
 
     -- -------- ESCAPE : si lead trop loin pendant assez longtemps --------
     match._escapeStart = match._escapeStart or {}
@@ -717,6 +765,10 @@ AddEventHandler("tougue:server:raceFinished", function(matchId)
         TriggerClientEvent("tougue:client:roundEnd", sid, matchId, { winner = src, reason = "client_finish", scores = match.scores })
     end
     matches[matchId] = nil
+    match._isCaught = {}
+    match._isAhead = {}
+    match._catchStart = {}
+    match._overtakeStart = {}
 end)
 
 -- End of server.lua

@@ -23,6 +23,44 @@ AddEventHandler("tougue:client:notify", function(msg)
     message(msg)
 end)
 
+RegisterNetEvent("tougue:client:notifyCatch")
+AddEventHandler("tougue:client:notifyCatch", function(matchId, info)
+    message("Vous êtes collé au lead ! Restez derrière ou dépassez-le.")
+    PlaySoundFrontend(-1, "CHECKPOINT_NORMAL", "HUD_MINI_GAME_SOUNDSET", true)
+end)
+
+RegisterNetEvent("tougue:client:notifyCaughtBy")
+AddEventHandler("tougue:client:notifyCaughtBy", function(matchId, info)
+    message("Attention : le chaser vous a rattrapé !")
+    PlaySoundFrontend(-1, "ALARM_CLOCK_WARNING", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
+end)
+
+RegisterNetEvent("tougue:client:notifyCatchLost")
+AddEventHandler("tougue:client:notifyCatchLost", function(matchId, info)
+    message("Vous n'êtes plus collé.")
+    PlaySoundFrontend(-1, "SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
+end)
+
+RegisterNetEvent("tougue:client:notifyNoLongerCaught")
+AddEventHandler("tougue:client:notifyNoLongerCaught", function(matchId, info)
+    message("Le chaser s'est éloigné.")
+    PlaySoundFrontend(-1, "SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
+end)
+
+-- overtake notifications (optionnel)
+RegisterNetEvent("tougue:client:notifyOvertake")
+AddEventHandler("tougue:client:notifyOvertake", function(matchId, info)
+    message("Dépassement validé ! Vous avez pris l'avantage.")
+    PlaySoundFrontend(-1, "Mission_Pass_Notify", "DLC_HEISTS_GENERAL_FRONTEND_SOUNDS", true)
+end)
+
+RegisterNetEvent("tougue:client:notifyOvertaken")
+AddEventHandler("tougue:client:notifyOvertaken", function(matchId, info)
+    message("Vous venez d'être dépassé ! Reprenez la position.")
+    PlaySoundFrontend(-1, "MP_LI", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
+end)
+
+
 RegisterNetEvent("tougue:client:prepareRound")
 AddEventHandler("tougue:client:prepareRound", function(matchId, role, modelName, coordsTable, track)
     -- stoppe proprement l'ancien round si besoin
