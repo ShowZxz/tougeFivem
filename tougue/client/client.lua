@@ -6,6 +6,9 @@ local blockThread = nil
 local checkpointThread = nil
 local raceTimerThread = nil
 local activeMatch = nil
+local POS_SEND_INTERVAL = 800 -- ms (client side)
+
+local posThread = nil
 
 -- COMMANDES -------------------------------------------------------
 RegisterCommand("tjoin", function()
@@ -74,6 +77,7 @@ AddEventHandler("tougue:client:startCountdown", function(seconds)
     local veh = GetVehiclePedIsIn(player, false)
     if veh and veh ~= 0 then
         FreezeEntityPosition(veh, false)
+        startPosLoop()
     end
     blockPlayerControls(false)
 end)
@@ -193,6 +197,12 @@ end
 
 -- SPAWN VEHICLE --------------------------------------------------
 function spawnCar(playerPed, modelName, coords)
+        local veh = GetVehiclePedIsIn(player, false)
+    local lastVeh = GetLastDrivenVehicle()
+    veh = lastVeh
+    if veh and veh ~= 0 then
+        DeleteEntity(veh)
+    end
     if not modelName or not coords then
         print("spawnCar: modelName ou coords manquant")
         return
@@ -311,6 +321,39 @@ function startCheckpointLoop()
         end
         -- assure la nullification du thread local
         checkpointThread = nil
+    end)
+end
+
+function startPosLoop()
+    -- si déjà lancé, on lève
+    if posThread then return end
+    if not activeMatch or not activeMatch.running then return end
+
+    posThread = Citizen.CreateThread(function()
+        while activeMatch and activeMatch.running do
+            local player = PlayerPedId()
+            local inVeh = IsPedInAnyVehicle(player, false)
+            local pos = GetEntityCoords(player)
+            local ts = GetGameTimer()
+
+            -- si tu veux envoyer la position du véhicule au lieu du ped, fais:
+            if inVeh then
+                local veh = GetVehiclePedIsIn(player, false)
+                if veh and veh ~= 0 then
+                    pos = GetEntityCoords(veh)
+                end
+            end
+
+            -- envoi vers le serveur : matchId, pos, ts
+            if activeMatch and activeMatch.id then
+                TriggerServerEvent("tougue:server:posUpdate", activeMatch.id, { x = pos.x, y = pos.y, z = pos.z }, ts)
+            end
+
+            print(("Client: posUpdate envoyé (x=%.2f y=%.2f z=%.2f)"):format(pos.x, pos.y, pos.z))
+
+            Citizen.Wait(POS_SEND_INTERVAL)
+        end
+        posThread = nil
     end)
 end
 

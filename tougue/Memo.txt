@@ -1,0 +1,4 @@
+pendant le match : 
+sortir du veh
+ne pas relancer une q
+verif ragequit
