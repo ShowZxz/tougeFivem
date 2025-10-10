@@ -9,6 +9,8 @@ local activeMatch = nil
 local POS_SEND_INTERVAL = 800 -- ms (client side)
 
 local posThread = nil
+local outOfVehicleNotified = false
+local inBoundsNotified = true
 
 -- COMMANDES -------------------------------------------------------
 RegisterCommand("tjoin", function()
@@ -394,6 +396,67 @@ function startPosLoop()
         posThread = nil
     end)
 end
+
+local function isPosInBounds(pos, track)
+    if not track or not track.meta or not track.meta.bounds then
+        return true -- si pas de bounds fourni on considère in-bounds
+    end
+    local b = track.meta.bounds
+    return pos.x >= b.minx and pos.x <= b.maxx and pos.y >= b.miny and pos.y <= b.maxy
+end
+
+-- thread de surveillance à lancer quand activeMatch est set (ou réutiliser startPosLoop)
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(500) -- intervalle léger
+
+        if activeMatch and activeMatch.running and activeMatch.id then
+            local player = PlayerPedId()
+            -- 1) sortie / entrée véhicule
+            local inVeh = IsPedInAnyVehicle(player, false)
+            if not inVeh and not outOfVehicleNotified then
+                -- notify server we left veh
+                TriggerServerEvent("tougue:server:playerExitedVehicle", activeMatch.id)
+                outOfVehicleNotified = true
+            elseif inVeh and outOfVehicleNotified then
+                TriggerServerEvent("tougue:server:playerEnteredVehicle", activeMatch.id)
+                outOfVehicleNotified = false
+            end
+
+            -- 2) ped dead
+            if IsEntityDead(player) then
+                TriggerServerEvent("tougue:server:playerDead", activeMatch.id)
+                -- stop local match
+            end
+
+            -- 3) engine health (si in vehicle)
+            if inVeh then
+                local veh = GetVehiclePedIsIn(player, false)
+                if veh and veh ~= 0 then
+                    local engineHealth = GetVehicleEngineHealth(veh) or 0
+                    -- send occasionally if below threshold
+                    if engineHealth < ENGINE_HEALTH_THRESHOLD then
+                        TriggerServerEvent("tougue:server:engineHealth", activeMatch.id, engineHealth)
+                    end
+                end
+            end
+
+            -- 4) bounds (position)
+            local pos = GetEntityCoords(player)
+            if not isPosInBounds(pos, activeMatch.track) then
+                if inBoundsNotified then
+                    inBoundsNotified = false
+                    TriggerServerEvent("tougue:server:outOfBounds", activeMatch.id)
+                end
+            else
+                if not inBoundsNotified then
+                    inBoundsNotified = true
+                    TriggerServerEvent("tougue:server:inBounds", activeMatch.id)
+                end
+            end
+        end
+    end
+end)
 
 -- Clean up on resource stop / manual cleanup (optional)
 AddEventHandler('onClientResourceStop', function(resourceName)

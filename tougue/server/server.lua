@@ -23,6 +23,9 @@ local USE_HORIZONTAL_ONLY = true   -- true = ignore dz dans la distance (utile p
 local POS_RECENT_THRESHOLD = 3000  -- ms : qu'on juge une pos "récente"
 local OVERTAKE_DISTANCE = 2.0   -- mètres devant pour considérer "en avant"
 local OVERTAKE_HOLD = 5000      -- ms que le chaser doit rester devant pour valider l'overtake
+local OUT_OF_VEHICLE_TIMEOUT = 8000      -- ms : temps max hors véhicule avant forfeit
+local ENGINE_HEALTH_THRESHOLD = 250.0    -- seuil moteur (GTA engine health ~0..1000) -> si dessous => action
+local OUT_OF_BOUNDS_TIMEOUT = 6000       -- ms : si out of bounds pendant ce temps -> forfeit
 
 
 -- Helpers ---------------------------------------------------------
@@ -30,6 +33,49 @@ local function isPlayerConnected(serverId)
     if not serverId then return false end
     local name = GetPlayerName(serverId)
     return name ~= nil and name ~= ""
+end
+
+local function isPlayerInAnyMatch(serverId)
+    for mid, m in pairs(matches) do
+        for _, sid in ipairs(m.players) do
+            if sid == serverId then return true, mid, m end
+        end
+    end
+    return false, nil, nil
+end
+
+local function isPlayerInAnyMatch(serverId)
+    for mid, m in pairs(matches) do
+        for _, sid in ipairs(m.players) do
+            if sid == serverId then return true, mid, m end
+        end
+    end
+    return false, nil, nil
+end
+
+local function handleForfeit(match, loserSid, reason)
+    if not match or not loserSid then return end
+    -- trouver other
+    local other = nil
+    for _, sid in ipairs(match.players) do
+        if sid ~= loserSid then other = sid; break end
+    end
+    if other and isPlayerConnected(other) then
+        match.scores[other] = (match.scores[other] or 0) + 1
+        for _, sid in ipairs(match.players) do
+            TriggerClientEvent("tougue:client:roundEnd", sid, match.id, { winner = other, reason = reason, scores = match.scores })
+        end
+        print(("Match %s: forfeit - joueur %d perd par %s, victoire pour %d"):format(match.id, loserSid, reason, other))
+    else
+        for _, sid in ipairs(match.players) do
+            if isPlayerConnected(sid) then
+                TriggerClientEvent("tougue:client:notify", sid, "Match annulé (opposant indisponible).")
+            end
+        end
+        print(("Match %s: forfeit - annulation (opposant absent)"):format(match.id))
+    end
+    -- cleanup match
+    matches[match.id] = nil
 end
 
 local function chooseRandom(list)
@@ -272,6 +318,12 @@ end
 RegisterNetEvent("tougue:server:joinQueue")
 AddEventHandler("tougue:server:joinQueue", function(playerName)
     local src = source
+
+    local inMatch, mid = isPlayerInAnyMatch(src)
+    if inMatch then
+        TriggerClientEvent("tougue:client:notify", src, "Vous êtes déjà en match, impossible de rejoindre la queue.")
+        return
+    end
     if not src then return end
 
     for _, p in ipairs(queue) do
@@ -750,6 +802,104 @@ end
     end
 
     -- rien de décisif pour le moment
+end)
+
+AddEventHandler("playerDropped", function(reason)
+    local src = source
+    local inMatch, mid, match = isPlayerInAnyMatch(src)
+    if inMatch and match then
+        print(("[tougue] playerDropped: %d a quitté (%s) -> forfeit"):format(src, tostring(reason)))
+        handleForfeit(match, src, "disconnect")
+    end
+end)
+
+-- Event: client signale qu'il a quitté le véhicule
+RegisterNetEvent("tougue:server:playerExitedVehicle")
+AddEventHandler("tougue:server:playerExitedVehicle", function(matchId)
+    local src = source
+    local match = matches[matchId]
+    if not match then return end
+    if not match._outOfVehicle then match._outOfVehicle = {} end
+    match._outOfVehicle[src] = GetGameTimer()
+
+    -- démarre un thread qui attend le timeout puis vérifie si le joueur est toujours marqué out
+    Citizen.CreateThread(function()
+        Wait(OUT_OF_VEHICLE_TIMEOUT + 100)
+        if not matches[matchId] then return end
+        if match._outOfVehicle and match._outOfVehicle[src] then
+            local elapsed = GetGameTimer() - match._outOfVehicle[src]
+            if elapsed >= OUT_OF_VEHICLE_TIMEOUT then
+                -- forfeit
+                handleForfeit(match, src, "out_of_vehicle_timeout")
+            end
+        end
+    end)
+end)
+
+-- Event: client signale qu'il est rentré dans le véhicule (clear flag)
+RegisterNetEvent("tougue:server:playerEnteredVehicle")
+AddEventHandler("tougue:server:playerEnteredVehicle", function(matchId)
+    local src = source
+    local match = matches[matchId]
+    if not match then return end
+    if match._outOfVehicle then match._outOfVehicle[src] = nil end
+end)
+
+-- Event: client signale que son ped est mort
+RegisterNetEvent("tougue:server:playerDead")
+AddEventHandler("tougue:server:playerDead", function(matchId)
+    local src = source
+    local match = matches[matchId]
+    if not match then return end
+    print(("[tougue] playerDead: %d mort -> forfeit"):format(src))
+    handleForfeit(match, src, "death")
+end)
+
+-- Event: engine damaged (client notifie la valeur actuelle)
+RegisterNetEvent("tougue:server:engineHealth")
+AddEventHandler("tougue:server:engineHealth", function(matchId, engineHealth)
+    local src = source
+    local match = matches[matchId]
+    if not match then return end
+    -- action configurable : forfeit si moteur très bas, sinon notifier
+    if engineHealth and engineHealth < ENGINE_HEALTH_THRESHOLD then
+        -- on peut soit forfeit direct, soit pénaliser (on choisit forfeit ici)
+        print(("[tougue] engineHealth: joueur %d engine=%.1f -> forfeit"):format(src, tonumber(engineHealth)))
+        handleForfeit(match, src, "engine_failed")
+    else
+        -- notifier (optionnel)
+        TriggerClientEvent("tougue:client:notify", src, ("Moteur endommagé : %.1f (pas critique)").format(engineHealth or 0))
+    end
+end)
+
+-- Event: client signale out-of-bounds (serveur peut aussi valider via posUpdate)
+RegisterNetEvent("tougue:server:outOfBounds")
+AddEventHandler("tougue:server:outOfBounds", function(matchId)
+    local src = source
+    local match = matches[matchId]
+    if not match then return end
+    match._outOfBounds = match._outOfBounds or {}
+    match._outOfBounds[src] = GetGameTimer()
+
+    Citizen.CreateThread(function()
+        Wait(OUT_OF_BOUNDS_TIMEOUT + 100)
+        if not matches[matchId] then return end
+        if match._outOfBounds and match._outOfBounds[src] then
+            local elapsed = GetGameTimer() - match._outOfBounds[src]
+            if elapsed >= OUT_OF_BOUNDS_TIMEOUT then
+                handleForfeit(match, src, "out_of_bounds")
+            end
+        end
+    end)
+end)
+
+-- Event: client signale qu'il est revenu in-bounds
+RegisterNetEvent("tougue:server:inBounds")
+AddEventHandler("tougue:server:inBounds", function(matchId)
+    local src = source
+    local match = matches[matchId]
+    if not match then return end
+    if match._outOfBounds then match._outOfBounds[src] = nil end
 end)
 
 -- Optional: client-reported race finished (fallback) -------------
