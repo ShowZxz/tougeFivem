@@ -187,3 +187,21 @@ RegisterCommand("checkpoint", function()
         end
     end)
 end)
+
+RegisterCommand("kill", function()
+    local player = PlayerPedId()
+    SetEntityHealth(player, 0)
+    message("Vous êtes mort.")
+end)
+
+RegisterCommand("break", function()
+    local player = PlayerPedId()
+    local veh = GetVehiclePedIsIn(player, false)
+    if veh and veh ~= 0 then
+        SetVehicleEngineHealth(veh, 100.0)
+        SetVehiclePetrolTankHealth(veh, 100.0)
+        print("Le véhicule est maintenant en panne.")
+    else
+        print("Vous n'êtes pas dans un véhicule.")
+    end
+end)

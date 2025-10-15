@@ -98,7 +98,7 @@ end)
 
 ---- IGNORE ---
 ---function drawCheckpoint(trackCheckpoint)
-    print("Dessin des checkpoints pour la course: " .. trackCheckpoint.name)
+
     local player = PlayerPedId()
     local radius = 10.0
     local checkpointType = 6 

@@ -12,6 +12,8 @@ local posThread = nil
 local outOfVehicleNotified = false
 local inBoundsNotified = true
 
+local ENGINE_HEALTH_THRESHOLD = 250.0  -- seuil de santé moteur pour envoi au serveur
+
 -- COMMANDES -------------------------------------------------------
 RegisterCommand("tjoin", function()
     message("Vous entrez dans la queue de test.")
@@ -61,6 +63,7 @@ AddEventHandler("tougue:client:notifyOvertaken", function(matchId, info)
     message("Vous venez d'être dépassé ! Reprenez la position.")
     PlaySoundFrontend(-1, "MP_LI", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
 end)
+
 
 
 RegisterNetEvent("tougue:client:prepareRound")
@@ -187,7 +190,7 @@ AddEventHandler("tougue:client:roundEnd", function(matchId, result)
     activeMatch.running = false
     blockPlayerControls(false)
 
-    message("Round terminé ! Gagnant : " .. tostring(result.winner))
+    message("Round terminé ! Gagnant : " .. tostring(result.winner) "resoin : " ..tostring(result.reason) "Score : " ..tostring(result.score))
 
     -- attendre un court délai pour permettre au serveur d'envoyer nextRound
     Citizen.CreateThread(function()
@@ -390,6 +393,50 @@ function startPosLoop()
             end
 
             print(("Client: posUpdate envoyé (x=%.2f y=%.2f z=%.2f)"):format(pos.x, pos.y, pos.z))
+            --Gestion hors vehicule
+
+            if not inVeh and not outOfVehicleNotified then
+                -- notify server we left veh
+                TriggerServerEvent("tougue:server:playerExitedVehicle", activeMatch.id)
+                outOfVehicleNotified = true
+            elseif inVeh and outOfVehicleNotified then
+                TriggerServerEvent("tougue:server:playerEnteredVehicle", activeMatch.id)
+                outOfVehicleNotified = false
+            end
+
+            if IsEntityDead(player) then
+                TriggerServerEvent("tougue:server:playerDead", activeMatch.id)
+                -- stop local match
+            end
+
+                local veh = GetVehiclePedIsIn(player, false)
+                if veh and veh ~= 0 then
+                    local engineHealth = GetVehicleEngineHealth(veh) or 0
+                    print(("Client: engineHealth=%.2f"):format(engineHealth))
+                    -- send occasionally if below threshold
+                    if engineHealth < ENGINE_HEALTH_THRESHOLD then
+                        TriggerServerEvent("tougue:server:engineHealth", activeMatch.id, engineHealth)
+                        
+                    end
+                end
+                
+            if NetworkIsPlayerActive(PlayerId()) == false then
+                TriggerServerEvent("tougue:server:playerDropped", activeMatch.id)
+            end
+--Bounds a gérer quand on aura une track avec des bounds
+
+--[[                         local pos = GetEntityCoords(player)
+            if not isPosInBounds(pos, activeMatch.track) then
+                if inBoundsNotified then
+                    inBoundsNotified = false
+                    TriggerServerEvent("tougue:server:outOfBounds", activeMatch.id)
+                end
+            else
+                if not inBoundsNotified then
+                    inBoundsNotified = true
+                    TriggerServerEvent("tougue:server:inBounds", activeMatch.id)
+                end
+            end  ]]
 
             Citizen.Wait(POS_SEND_INTERVAL)
         end
@@ -405,58 +452,7 @@ local function isPosInBounds(pos, track)
     return pos.x >= b.minx and pos.x <= b.maxx and pos.y >= b.miny and pos.y <= b.maxy
 end
 
--- thread de surveillance à lancer quand activeMatch est set (ou réutiliser startPosLoop)
-Citizen.CreateThread(function()
-    while true do
-        Citizen.Wait(500) -- intervalle léger
 
-        if activeMatch and activeMatch.running and activeMatch.id then
-            local player = PlayerPedId()
-            -- 1) sortie / entrée véhicule
-            local inVeh = IsPedInAnyVehicle(player, false)
-            if not inVeh and not outOfVehicleNotified then
-                -- notify server we left veh
-                TriggerServerEvent("tougue:server:playerExitedVehicle", activeMatch.id)
-                outOfVehicleNotified = true
-            elseif inVeh and outOfVehicleNotified then
-                TriggerServerEvent("tougue:server:playerEnteredVehicle", activeMatch.id)
-                outOfVehicleNotified = false
-            end
-
-            -- 2) ped dead
-            if IsEntityDead(player) then
-                TriggerServerEvent("tougue:server:playerDead", activeMatch.id)
-                -- stop local match
-            end
-
-            -- 3) engine health (si in vehicle)
-            if inVeh then
-                local veh = GetVehiclePedIsIn(player, false)
-                if veh and veh ~= 0 then
-                    local engineHealth = GetVehicleEngineHealth(veh) or 0
-                    -- send occasionally if below threshold
-                    if engineHealth < ENGINE_HEALTH_THRESHOLD then
-                        TriggerServerEvent("tougue:server:engineHealth", activeMatch.id, engineHealth)
-                    end
-                end
-            end
-
-            -- 4) bounds (position)
-            local pos = GetEntityCoords(player)
-            if not isPosInBounds(pos, activeMatch.track) then
-                if inBoundsNotified then
-                    inBoundsNotified = false
-                    TriggerServerEvent("tougue:server:outOfBounds", activeMatch.id)
-                end
-            else
-                if not inBoundsNotified then
-                    inBoundsNotified = true
-                    TriggerServerEvent("tougue:server:inBounds", activeMatch.id)
-                end
-            end
-        end
-    end
-end)
 
 -- Clean up on resource stop / manual cleanup (optional)
 AddEventHandler('onClientResourceStop', function(resourceName)

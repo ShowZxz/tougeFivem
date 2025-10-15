@@ -1,0 +1,12 @@
+{
+  "players": {
+    "<identifier>": {
+      "name": "Pseudo",
+      "points": 1234,
+      "matches": 50,
+      "wins": 30,
+      "losses": 20,
+      "history": [ { "matchId": "...", "points": 50, "reason": "2-1" } ]
+    }
+  }
+}

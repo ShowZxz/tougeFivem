@@ -27,6 +27,175 @@ local OUT_OF_VEHICLE_TIMEOUT = 8000      -- ms : temps max hors véhicule avant 
 local ENGINE_HEALTH_THRESHOLD = 250.0    -- seuil moteur (GTA engine health ~0..1000) -> si dessous => action
 local OUT_OF_BOUNDS_TIMEOUT = 6000       -- ms : si out of bounds pendant ce temps -> forfeit
 
+-- ==== Scoring & persistence ====
+local SCORE_CONFIG = {
+    sweep3 = 100,
+    win2_1 = 50,
+    closeLoss = 30,    -- pour le perdant dans un 2-1 (si tu veux récompenser)
+    sweepLoss = -80,   -- perdant 0-3
+    overtakeBonus = 20,
+    escapeBonus = 15,
+    forfeitPenalty = -100,
+    cleanMatchBonus = 25
+}
+
+local LEADERBOARD_FILE = "data/leaderboard.json"
+local leaderboard = { players = {} }
+
+
+local function getPrimaryIdentifier(serverId)
+    local ids = GetPlayerIdentifiers(serverId) or {}
+    -- try license first
+    for _, id in ipairs(ids) do
+        if string.find(id, "license:") then return id end
+    end
+    -- fallback steam
+    for _, id in ipairs(ids) do
+        if string.find(id, "steam:") then return id end
+    end
+    -- last fallback first id
+    return ids[1]
+end
+
+local function loadLeaderboard()
+    local raw = LoadResourceFile(GetCurrentResourceName(), LEADERBOARD_FILE)
+    if raw and raw ~= "" then
+        local ok, decoded = pcall(function() return json.decode(raw) end)
+        if ok and decoded then
+            leaderboard = decoded
+            print("[tougue] leaderboard loaded (" .. tostring(#(leaderboard.players or {})) .. " players)")
+            return
+        end
+    end
+    print("[tougue] No leaderboard file, starting fresh.")
+    leaderboard = { players = {} }
+end
+
+local function saveLeaderboard()
+    local encoded = json.encode(leaderboard)
+    SaveResourceFile(GetCurrentResourceName(), LEADERBOARD_FILE, encoded, -1)
+end
+
+-- Ensure file loaded at start
+loadLeaderboard()
+
+-- Compute points for a finished match
+-- match: match table with .players (array), .scores map sid->wins, .extras map sid->{overtakes=?, escapes=?}
+local function computeMatchPoints(match)
+    -- returns map sid -> deltaPoints and reason strings
+    local deltas = {}
+    local reasons = {}
+    -- gather scores
+    local sids = match.players
+    local a, b = sids[1], sids[2]
+    local sa = match.scores[a] or 0
+    local sb = match.scores[b] or 0
+
+    -- decide winner / loser / tie
+    local winner, loser = nil, nil
+    if sa > sb then winner, loser = a, b
+    elseif sb > sa then winner, loser = b, a
+    else winner = nil end
+
+    -- init
+    deltas[a] = 0; deltas[b] = 0
+    reasons[a] = ""; reasons[b] = ""
+
+    -- scoring for various match lengths (here we treat as played rounds, e.g. 3 or 4)
+    local maxRounds = match.maxRounds or 3
+
+    if maxRounds == 3 then
+        -- possible outcomes: 3-0,2-1,1-2,0-3 (if you play all rounds)
+        if sa == 3 and sb == 0 then
+            deltas[a] = deltas[a] + SCORE_CONFIG.sweep3
+            deltas[b] = deltas[b] + SCORE_CONFIG.sweepLoss
+            reasons[a] = "3-0"
+            reasons[b] = "0-3"
+        elseif sa == 2 and sb == 1 then
+            deltas[a] = deltas[a] + SCORE_CONFIG.win2_1
+            deltas[b] = deltas[b] + SCORE_CONFIG.closeLoss
+            reasons[a] = "2-1"
+            reasons[b] = "1-2"
+        elseif sb == 3 and sa == 0 then
+            deltas[b] = deltas[b] + SCORE_CONFIG.sweep3
+            deltas[a] = deltas[a] + SCORE_CONFIG.sweepLoss
+            reasons[b] = "3-0"
+            reasons[a] = "0-3"
+        elseif sb == 2 and sa == 1 then
+            deltas[b] = deltas[b] + SCORE_CONFIG.win2_1
+            deltas[a] = deltas[a] + SCORE_CONFIG.closeLoss
+            reasons[b] = "2-1"
+            reasons[a] = "1-2"
+        else
+            -- fallback: if best-of logic (first to 2) use winner detection
+            if winner then
+                deltas[winner] = deltas[winner] + SCORE_CONFIG.win2_1
+                deltas[loser] = deltas[loser] + SCORE_CONFIG.closeLoss
+                reasons[winner] = "win"
+                reasons[loser] = "loss"
+            end
+        end
+    else
+        -- for other maxRounds, simple rule: winner + (base proportional to margin)
+        if winner then
+            local margin = math.abs(sa - sb)
+            local base = 40 + (margin * 20)
+            deltas[winner] = deltas[winner] + base
+            deltas[loser] = deltas[loser] + math.floor(base * 0.5)
+            reasons[winner] = (tostring(sa) .. "-" .. tostring(sb))
+            reasons[loser] = (tostring(sb) .. "-" .. tostring(sa))
+        end
+    end
+
+    -- extras (overtake/escape) : ajouter bonus par joueur si présents
+    match.extras = match.extras or {}
+    for _, sid in ipairs(match.players) do
+        local ex = match.extras[sid] or { overtakes = 0, escapes = 0, forfeits = 0 }
+        if ex.overtakes and ex.overtakes > 0 then
+            local bonus = ex.overtakes * SCORE_CONFIG.overtakeBonus
+            deltas[sid] = deltas[sid] + bonus
+            reasons[sid] = reasons[sid] .. " +overtake*"..ex.overtakes
+        end
+        if ex.escapes and ex.escapes > 0 then
+            local bonus = ex.escapes * SCORE_CONFIG.escapeBonus
+            deltas[sid] = deltas[sid] + bonus
+            reasons[sid] = reasons[sid] .. " +escape*"..ex.escapes
+        end
+        if ex.forfeit and ex.forfeit == true then
+            deltas[sid] = deltas[sid] + SCORE_CONFIG.forfeitPenalty
+            reasons[sid] = reasons[sid] .. " forfeit"
+        end
+    end
+
+    -- clean up reason strings default
+    for _, sid in ipairs(match.players) do
+        if reasons[sid] == "" then reasons[sid] = "result" end
+    end
+
+    return deltas, reasons
+end
+
+-- apply points to leaderboard and save
+local function applyMatchToLeaderboard(match)
+    if not match then return end
+    local deltas, reasons = computeMatchPoints(match)
+    for _, sid in ipairs(match.players) do
+        local id = getPrimaryIdentifier(sid) or ("player:"..tostring(sid))
+        local name = GetPlayerName(sid) or ("player"..tostring(sid))
+        leaderboard.players[id] = leaderboard.players[id] or { name = name, points = 0, matches = 0, wins = 0, losses = 0, history = {} }
+        local entry = leaderboard.players[id]
+        entry.name = name
+        entry.points = (entry.points or 0) + (deltas[sid] or 0)
+        entry.matches = (entry.matches or 0) + 1
+        if (match.scores[sid] or 0) > (match.scores[ (match.players[1] == sid and match.players[2] or match.players[1]) ] or 0) then
+            entry.wins = (entry.wins or 0) + 1
+        else
+            entry.losses = (entry.losses or 0) + 1
+        end
+        table.insert(entry.history, { matchId = match.id, delta = deltas[sid] or 0, reason = reasons[sid] or "" , time = GetGameTimer() })
+    end
+    saveLeaderboard()
+end
 
 -- Helpers ---------------------------------------------------------
 local function isPlayerConnected(serverId)
@@ -35,14 +204,6 @@ local function isPlayerConnected(serverId)
     return name ~= nil and name ~= ""
 end
 
-local function isPlayerInAnyMatch(serverId)
-    for mid, m in pairs(matches) do
-        for _, sid in ipairs(m.players) do
-            if sid == serverId then return true, mid, m end
-        end
-    end
-    return false, nil, nil
-end
 
 local function isPlayerInAnyMatch(serverId)
     for mid, m in pairs(matches) do
@@ -61,7 +222,7 @@ local function handleForfeit(match, loserSid, reason)
         if sid ~= loserSid then other = sid; break end
     end
     if other and isPlayerConnected(other) then
-        match.scores[other] = (match.scores[other] or 0) + 1
+        match.scores[other] = (match.scores[other] or 0) + 1 -- donner ragequit point
         for _, sid in ipairs(match.players) do
             TriggerClientEvent("tougue:client:roundEnd", sid, match.id, { winner = other, reason = reason, scores = match.scores })
         end
@@ -269,6 +430,7 @@ local function handleRoundWin(match, winnerSid, reason)
         -- cleanup
         Citizen.CreateThread(function()
             Wait(3000)
+            applyMatchToLeaderboard(match)
             matches[match.id] = nil
             match._isCaught = {}
             match._isAhead = {}
@@ -633,6 +795,8 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
     end
     match._lastPosUpdate[src] = now
 
+
+    
     -- anti-teleport (vitesse impossible) : on compare avec la dernière pos stockée
     match.lastPos = match.lastPos or {}
     local prev = match.lastPos[src]
@@ -804,6 +968,7 @@ end
     -- rien de décisif pour le moment
 end)
 
+RegisterNetEvent("tougue:server:playerDropped")
 AddEventHandler("playerDropped", function(reason)
     local src = source
     local inMatch, mid, match = isPlayerInAnyMatch(src)
@@ -843,6 +1008,7 @@ AddEventHandler("tougue:server:playerEnteredVehicle", function(matchId)
     local match = matches[matchId]
     if not match then return end
     if match._outOfVehicle then match._outOfVehicle[src] = nil end
+    TriggerClientEvent("tougue:client:notify", src, "Vous êtes de retour dans le véhicule.")
 end)
 
 -- Event: client signale que son ped est mort
@@ -861,15 +1027,13 @@ AddEventHandler("tougue:server:engineHealth", function(matchId, engineHealth)
     local src = source
     local match = matches[matchId]
     if not match then return end
-    -- action configurable : forfeit si moteur très bas, sinon notifier
+    -- A configurer selon besoin
     if engineHealth and engineHealth < ENGINE_HEALTH_THRESHOLD then
-        -- on peut soit forfeit direct, soit pénaliser (on choisit forfeit ici)
+
         print(("[tougue] engineHealth: joueur %d engine=%.1f -> forfeit"):format(src, tonumber(engineHealth)))
         handleForfeit(match, src, "engine_failed")
-    else
-        -- notifier (optionnel)
-        TriggerClientEvent("tougue:client:notify", src, ("Moteur endommagé : %.1f (pas critique)").format(engineHealth or 0))
     end
+
 end)
 
 -- Event: client signale out-of-bounds (serveur peut aussi valider via posUpdate)

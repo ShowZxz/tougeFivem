@@ -1,4 +1,38 @@
 pendant le match : 
-sortir du veh
-ne pas relancer une q
-verif ragequit
+sortir du veh--
+ne pas relancer une q--
+verif ragequit --
+outbounds et inbounds()
+
+enregistrement score avec les bonus de points
+Leaderboard
+
+
+blips checkpoint
+
+Faire une action pour l'anticheat 
+
+tracks.lua en json
+
+
+
+
+Stockage / persistance légère des matchs (dans RAM mais indexé)
+Pourquoi : éviter collisions d’IDs, pouvoir debugger et retrouver un match si needed.
+Rapide : tu as matches; ajoute matchesByPlayer[src] = matchId pour lookup O(1).
+
+Validation serveur supplémentaire des états clients
+Pourquoi : le client peut mentir. Exemple : engineHealth, outOfBounds, checkpoint — double-check via server (lastPos, distance, speed).
+Rapide : sur engineHealth < seuil, vérifie via voir si veh existant ou vitesse null avant forfeit.
+
+Nettoyage & watchdog
+Pourquoi : matchs zombies (players absents) consomment mémoire.
+Rapide : thread serveur qui every 10s scan matches et supprime si inactifs > Xs.
+
+Logs structurés & métriques basiques
+Pourquoi : pour tracer triches et bugs.
+Rapide : prints formatés + fichier ou console. Ex: [tougue][matchId] roundEnd winner=... reason=....
+
+Atomicité des actions critiques
+Pourquoi : éviter double attribution de point.
+Rapide : verrou par match._processing = true pendant handleRoundWin, ignore events concurrents.
