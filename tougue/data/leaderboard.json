@@ -1,12 +1,61 @@
 {
-  "players": {
-    "<identifier>": {
-      "name": "Pseudo",
-      "points": 1234,
-      "matches": 50,
-      "wins": 30,
-      "losses": 20,
-      "history": [ { "matchId": "...", "points": 50, "reason": "2-1" } ]
+    "players": {
+        "license:b200b2ae9b667f5c5edd801da2ddbdd6d8a40979": {
+            "wins": 3,
+            "matches": 8,
+            "history": [
+                {
+                    "reason": "3-0",
+                    "delta": 100,
+                    "matchId": "1760526546_1",
+                    "time": 4383143
+                },
+                {
+                    "reason": "0-3",
+                    "delta": 50,
+                    "matchId": "1760526546_1",
+                    "time": 4383143
+                },
+                {
+                    "delta": 80,
+                    "matchId": "1760685688_2",
+                    "reason": "2-0",
+                    "time": 415756
+                },
+                {
+                    "delta": 40,
+                    "matchId": "1760685688_2",
+                    "reason": "0-2",
+                    "time": 415756
+                },
+                {
+                    "delta": 0,
+                    "reason": "result",
+                    "time": 2653390,
+                    "matchId": "1760687920_1"
+                },
+                {
+                    "delta": 0,
+                    "reason": "result",
+                    "time": 2653390,
+                    "matchId": "1760687920_1"
+                },
+                {
+                    "delta": 40,
+                    "time": 3664704,
+                    "reason": "2-0",
+                    "matchId": "1760688870_2"
+                },
+                {
+                    "delta": 80,
+                    "time": 3664704,
+                    "reason": "0-2",
+                    "matchId": "1760688870_2"
+                }
+            ],
+            "points": 390,
+            "losses": 5,
+            "name": "lilia"
+        }
     }
-  }
 }

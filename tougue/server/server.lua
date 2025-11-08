@@ -1,7 +1,3 @@
--- server.lua (version complète — match manager, rounds, checkpoints, timeout)
--- Remplace ton server.lua par ce fichier
-
--- Charger les tracks (fichier server/tracks.lua attendu)
 local tracks = assert(load(LoadResourceFile(GetCurrentResourceName(), "server/tracks.lua")))()
 
 -- Config
@@ -11,18 +7,18 @@ local matchTimeoutReady = 8000 -- ms pour attendre les ready
 local matches = {}             -- table des matchs actifs, indexée par matchId
 
 -- Validation params
-local CHECKPOINT_MARGIN = 1.5        -- tolérance en mètres
+local CHECKPOINT_MARGIN = 1.5            -- tolérance en mètres
 local MIN_TIME_BETWEEN_CHECKPOINTS = 800 -- ms
-local POS_INTERVAL_MIN = 250         -- ms : ignore updates plus rapides
-local MAX_SPEED_THRESHOLD = 120      -- m/s (valeur conservatrice pour détecter teleport)
-local MAX_DIST = 200                 -- mètres -> escape threshold distance
-local ESCAPE_THRESHOLD = 6000        -- ms -> si distance > MAX_DIST pendant cette durée -> lead gagne
-local CATCH_DIST = 20                 -- m -> si chaser à moins de CATCH_DIST -> chaser gagne
-local CATCH_HOLD = 400               -- ms -> (optionnel) ms à rester proche pour valider catch
-local USE_HORIZONTAL_ONLY = true   -- true = ignore dz dans la distance (utile pour ponts/hauteur)
-local POS_RECENT_THRESHOLD = 3000  -- ms : qu'on juge une pos "récente"
-local OVERTAKE_DISTANCE = 2.0   -- mètres devant pour considérer "en avant"
-local OVERTAKE_HOLD = 5000      -- ms que le chaser doit rester devant pour valider l'overtake
+local POS_INTERVAL_MIN = 250             -- ms : ignore updates plus rapides
+local MAX_SPEED_THRESHOLD = 120          -- m/s (valeur conservatrice pour détecter teleport)
+local MAX_DIST = 200                     -- mètres -> escape threshold distance
+local ESCAPE_THRESHOLD = 6000            -- ms -> si distance > MAX_DIST pendant cette durée -> lead gagne
+local CATCH_DIST = 20                    -- m -> si chaser à moins de CATCH_DIST -> chaser gagne
+local CATCH_HOLD = 400                   -- ms -> (optionnel) ms à rester proche pour valider catch
+local USE_HORIZONTAL_ONLY = true         -- true = ignore dz dans la distance (utile pour ponts/hauteur)
+local POS_RECENT_THRESHOLD = 3000        -- ms : qu'on juge une pos "récente"
+local OVERTAKE_DISTANCE = 2.0            -- mètres devant pour considérer "en avant"
+local OVERTAKE_HOLD = 5000               -- ms que le chaser doit rester devant pour valider l'overtake
 local OUT_OF_VEHICLE_TIMEOUT = 8000      -- ms : temps max hors véhicule avant forfeit
 local ENGINE_HEALTH_THRESHOLD = 250.0    -- seuil moteur (GTA engine health ~0..1000) -> si dessous => action
 local OUT_OF_BOUNDS_TIMEOUT = 6000       -- ms : si out of bounds pendant ce temps -> forfeit
@@ -31,8 +27,8 @@ local OUT_OF_BOUNDS_TIMEOUT = 6000       -- ms : si out of bounds pendant ce tem
 local SCORE_CONFIG = {
     sweep3 = 100,
     win2_1 = 50,
-    closeLoss = 30,    -- pour le perdant dans un 2-1 (si tu veux récompenser)
-    sweepLoss = -80,   -- perdant 0-3
+    closeLoss = 30,  -- pour le perdant dans un 2-1 (si tu veux récompenser)
+    sweepLoss = -80, -- perdant 0-3
     overtakeBonus = 20,
     escapeBonus = 15,
     forfeitPenalty = -100,
@@ -63,7 +59,7 @@ local function loadLeaderboard()
         local ok, decoded = pcall(function() return json.decode(raw) end)
         if ok and decoded then
             leaderboard = decoded
-            print("[tougue] leaderboard loaded (" .. tostring(#(leaderboard.players or {})) .. " players)")
+            print(string.format("[tougue] leaderboard loaded (%d players)", table.count(leaderboard.players)))
             return
         end
     end
@@ -93,9 +89,13 @@ local function computeMatchPoints(match)
 
     -- decide winner / loser / tie
     local winner, loser = nil, nil
-    if sa > sb then winner, loser = a, b
-    elseif sb > sa then winner, loser = b, a
-    else winner = nil end
+    if sa > sb then
+        winner, loser = a, b
+    elseif sb > sa then
+        winner, loser = b, a
+    else
+        winner = nil
+    end
 
     -- init
     deltas[a] = 0; deltas[b] = 0
@@ -154,12 +154,12 @@ local function computeMatchPoints(match)
         if ex.overtakes and ex.overtakes > 0 then
             local bonus = ex.overtakes * SCORE_CONFIG.overtakeBonus
             deltas[sid] = deltas[sid] + bonus
-            reasons[sid] = reasons[sid] .. " +overtake*"..ex.overtakes
+            reasons[sid] = reasons[sid] .. " +overtake*" .. ex.overtakes
         end
         if ex.escapes and ex.escapes > 0 then
             local bonus = ex.escapes * SCORE_CONFIG.escapeBonus
             deltas[sid] = deltas[sid] + bonus
-            reasons[sid] = reasons[sid] .. " +escape*"..ex.escapes
+            reasons[sid] = reasons[sid] .. " +escape*" .. ex.escapes
         end
         if ex.forfeit and ex.forfeit == true then
             deltas[sid] = deltas[sid] + SCORE_CONFIG.forfeitPenalty
@@ -180,19 +180,21 @@ local function applyMatchToLeaderboard(match)
     if not match then return end
     local deltas, reasons = computeMatchPoints(match)
     for _, sid in ipairs(match.players) do
-        local id = getPrimaryIdentifier(sid) or ("player:"..tostring(sid))
-        local name = GetPlayerName(sid) or ("player"..tostring(sid))
-        leaderboard.players[id] = leaderboard.players[id] or { name = name, points = 0, matches = 0, wins = 0, losses = 0, history = {} }
+        local id = getPrimaryIdentifier(sid) or ("player:" .. tostring(sid))
+        local name = GetPlayerName(sid) or ("player" .. tostring(sid))
+        leaderboard.players[id] = leaderboard.players[id] or
+        { name = name, points = 0, matches = 0, wins = 0, losses = 0, history = {} }
         local entry = leaderboard.players[id]
         entry.name = name
         entry.points = (entry.points or 0) + (deltas[sid] or 0)
         entry.matches = (entry.matches or 0) + 1
-        if (match.scores[sid] or 0) > (match.scores[ (match.players[1] == sid and match.players[2] or match.players[1]) ] or 0) then
+        if (match.scores[sid] or 0) > (match.scores[(match.players[1] == sid and match.players[2] or match.players[1])] or 0) then
             entry.wins = (entry.wins or 0) + 1
         else
             entry.losses = (entry.losses or 0) + 1
         end
-        table.insert(entry.history, { matchId = match.id, delta = deltas[sid] or 0, reason = reasons[sid] or "" , time = GetGameTimer() })
+        table.insert(entry.history,
+            { matchId = match.id, delta = deltas[sid] or 0, reason = reasons[sid] or "", time = GetGameTimer() })
     end
     saveLeaderboard()
 end
@@ -216,15 +218,19 @@ end
 
 local function handleForfeit(match, loserSid, reason)
     if not match or not loserSid then return end
+    
     -- trouver other
     local other = nil
     for _, sid in ipairs(match.players) do
-        if sid ~= loserSid then other = sid; break end
+        if sid ~= loserSid then
+            other = sid; break
+        end
     end
     if other and isPlayerConnected(other) then
         match.scores[other] = (match.scores[other] or 0) + 1 -- donner ragequit point
         for _, sid in ipairs(match.players) do
-            TriggerClientEvent("tougue:client:roundEnd", sid, match.id, { winner = other, reason = reason, scores = match.scores })
+            TriggerClientEvent("tougue:client:roundEnd", sid, match.id,
+                { winner = other, reason = reason, scores = match.scores })
         end
         print(("Match %s: forfeit - joueur %d perd par %s, victoire pour %d"):format(match.id, loserSid, reason, other))
     else
@@ -236,6 +242,7 @@ local function handleForfeit(match, loserSid, reason)
         print(("Match %s: forfeit - annulation (opposant absent)"):format(match.id))
     end
     -- cleanup match
+    applyMatchToLeaderboard(match)
     matches[match.id] = nil
 end
 
@@ -280,16 +287,17 @@ local function createMatchWithRandomTrack(playersInMatch)
         trackId = track.id,
         track = track,
         players = { lead, chaser },
-        ready = {},                 -- ready flags per player
-        currentCheckpoint = {},     -- per player idx
-        scores = {},                -- per player score
-        lastCheckpointTime = {},    -- per player last cp timestamp
+        ready = {},              -- ready flags per player
+        currentCheckpoint = {},  -- per player idx
+        scores = {},             -- per player score
+        lastCheckpointTime = {}, -- per player last cp timestamp
         createdAt = GetGameTimer(),
         timeout = track.meta and track.meta.timeLimit or 0,
         round = 1,
         maxRounds = track.meta and (track.meta.maxRounds or 2) or 2,
         roles = { [lead] = "lead", [chaser] = "chaser" },
-        chosenVehicle = chosenVehicle
+        chosenVehicle = chosenVehicle,
+        extras = {}
     }
 
     for _, sid in ipairs(match.players) do
@@ -357,7 +365,8 @@ function startNextRound(match)
 
     -- Re-prepare clients for the new round
     TriggerClientEvent("tougue:client:prepareRound", match.players[1], match.id, "lead", model, leadCoords, match.track)
-    TriggerClientEvent("tougue:client:prepareRound", match.players[2], match.id, "chaser", model, chaserCoords, match.track)
+    TriggerClientEvent("tougue:client:prepareRound", match.players[2], match.id, "chaser", model, chaserCoords,
+        match.track)
 
     -- Wait for playerReady (same pattern as initial match creation)
     local startWait = GetGameTimer()
@@ -402,10 +411,24 @@ local function handleRoundWin(match, winnerSid, reason)
     if not match or not winnerSid then return end
     -- update score
     match.scores[winnerSid] = (match.scores[winnerSid] or 0) + 1
+    -- === TRACKER DES BONUS / EXTRAS ===
+    match.extras[winnerSid] = match.extras[winnerSid] or { overtakes = 0, escapes = 0, forfeits = 0 }
+
+    if reason == "overtake" then
+        match.extras[winnerSid].overtakes = match.extras[winnerSid].overtakes + 1
+    elseif reason == "escape" then
+        match.extras[winnerSid].escapes = match.extras[winnerSid].escapes + 1
+    elseif reason == "forfeit" then
+        match.extras[winnerSid].forfeits = match.extras[winnerSid].forfeits + 1
+    end
+
+    print(("[tougue] Match %s: extras updated for %d (reason=%s)"):format(match.id, winnerSid, reason))
+
 
     -- notify all players round end
     for _, sid in ipairs(match.players) do
-        TriggerClientEvent("tougue:client:roundEnd", sid, match.id, { winner = winnerSid, reason = reason, scores = match.scores })
+        TriggerClientEvent("tougue:client:roundEnd", sid, match.id,
+            { winner = winnerSid, reason = reason, scores = match.scores })
     end
 
     -- decide next: next round or match end (reuse existing logic)
@@ -421,8 +444,10 @@ local function handleRoundWin(match, winnerSid, reason)
         local s1 = match.scores[p1] or 0
         local s2 = match.scores[p2] or 0
         local finalWinner = nil
-        if s1 > s2 then finalWinner = p1
-        elseif s2 > s1 then finalWinner = p2
+        if s1 > s2 then
+            finalWinner = p1
+        elseif s2 > s1 then
+            finalWinner = p2
         end
         for _, sid in ipairs(match.players) do
             TriggerClientEvent("tougue:client:matchEnd", sid, match.id, { scores = match.scores, winner = finalWinner })
@@ -440,8 +465,8 @@ local function handleRoundWin(match, winnerSid, reason)
     end
 end
 
-local function vecLength(x,y,z)
-    return math.sqrt((x*x) + (y*y) + ((z and z*z) or 0))
+local function vecLength(x, y, z)
+    return math.sqrt((x * x) + (y * y) + ((z and z * z) or 0))
 end
 
 local function getForwardVecForPlayerOnTrack(match, sid)
@@ -450,8 +475,8 @@ local function getForwardVecForPlayerOnTrack(match, sid)
     local cpIndex = match.currentCheckpoint[sid] or 1
 
     local prevPos = nil
-    if cpIndex > 1 and track.checkpoints[cpIndex-1] then
-        prevPos = track.checkpoints[cpIndex-1].pos
+    if cpIndex > 1 and track.checkpoints[cpIndex - 1] then
+        prevPos = track.checkpoints[cpIndex - 1].pos
     else
         prevPos = track.start
     end
@@ -471,7 +496,7 @@ local function getForwardVecForPlayerOnTrack(match, sid)
     local fz = (nextPos.z or 0) - (prevPos.z or 0)
     local mag = vecLength(fx, fy, fz)
     if mag == 0 then return nil end
-    return fx/mag, fy/mag, fz/mag
+    return fx / mag, fy / mag, fz / mag
 end
 
 
@@ -535,7 +560,8 @@ AddEventHandler("tougue:server:matchCreated", function(playersInMatch)
         return
     end
 
-    print(("[tougue] Création match entre %s et %s"):format(tostring(playersInMatch[1].name), tostring(playersInMatch[2].name)))
+    print(("[tougue] Création match entre %s et %s"):format(tostring(playersInMatch[1].name),
+        tostring(playersInMatch[2].name)))
 
     local matchId = createMatchWithRandomTrack(playersInMatch)
     if not matchId then
@@ -549,7 +575,8 @@ AddEventHandler("tougue:server:matchCreated", function(playersInMatch)
 
     local match = matches[matchId]
     if not match then
-        print(("[tougue] matchCreated: match non trouvé après createMatchWithRandomTrack (matchId=%s)"):format(tostring(matchId)))
+        print(("[tougue] matchCreated: match non trouvé après createMatchWithRandomTrack (matchId=%s)"):format(tostring(
+        matchId)))
         return
     end
 
@@ -604,7 +631,9 @@ AddEventHandler("tougue:server:playerReady", function(matchId)
 
     local isParticipant = false
     for _, sid in ipairs(match.players) do
-        if sid == src then isParticipant = true; break end
+        if sid == src then
+            isParticipant = true; break
+        end
     end
     if not isParticipant then
         print(("[tougue] playerReady: %s n'est pas participant du match %s"):format(tostring(src), tostring(matchId)))
@@ -634,7 +663,9 @@ AddEventHandler("tougue:server:checkpointPassed", function(matchId, checkpointIn
     -- verify participant
     local isParticipant = false
     for _, sid in ipairs(match.players) do
-        if sid == src then isParticipant = true; break end
+        if sid == src then
+            isParticipant = true; break
+        end
     end
     if not isParticipant then
         TriggerClientEvent("tougue:client:notify", src, "Vous n'êtes pas participant de ce match.")
@@ -644,7 +675,8 @@ AddEventHandler("tougue:server:checkpointPassed", function(matchId, checkpointIn
     -- expected index
     local expectedIndex = match.currentCheckpoint[src] or 1
     if checkpointIndex ~= expectedIndex then
-        TriggerClientEvent("tougue:client:notify", src, ("Checkpoint rejeté : ordre incorrect (attendu %d)").format(expectedIndex))
+        TriggerClientEvent("tougue:client:notify", src,
+            string.format("Checkpoint rejeté : ordre incorrect (attendu %d)", expectedIndex))
         return
     end
 
@@ -658,7 +690,7 @@ AddEventHandler("tougue:server:checkpointPassed", function(matchId, checkpointIn
     local dx = clientPos.x - cp.pos.x
     local dy = clientPos.y - cp.pos.y
     local dz = (clientPos.z or 0) - cp.pos.z
-    local dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+    local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
     if dist > (cp.radius + CHECKPOINT_MARGIN) then
         TriggerClientEvent("tougue:client:notify", src, "Checkpoint rejeté : position invalide.")
         return
@@ -675,7 +707,8 @@ AddEventHandler("tougue:server:checkpointPassed", function(matchId, checkpointIn
     match.currentCheckpoint[src] = (match.currentCheckpoint[src] or 1) + 1
     match.lastCheckpointTime[src] = clientTs or GetGameTimer()
 
-    print(("[tougue] Match %s: joueur %d validé checkpoint %d (next=%d)"):format(matchId, src, checkpointIndex, match.currentCheckpoint[src]))
+    print(("[tougue] Match %s: joueur %d validé checkpoint %d (next=%d)"):format(matchId, src, checkpointIndex,
+        match.currentCheckpoint[src]))
 
     -- notify client (server confirmation)
     TriggerClientEvent("tougue:client:checkpointValidated", src, matchId, checkpointIndex)
@@ -703,13 +736,16 @@ AddEventHandler("tougue:server:checkpointPassed", function(matchId, checkpointIn
             local s1 = match.scores[p1] or 0
             local s2 = match.scores[p2] or 0
             local winner = nil
-            if s1 > s2 then winner = p1
-            elseif s2 > s1 then winner = p2
-            else winner = nil -- tie
+            if s1 > s2 then
+                winner = p1
+            elseif s2 > s1 then
+                winner = p2
+            else
+                winner = nil  -- tie
             end
 
             for _, sid in ipairs(match.players) do
-                TriggerClientEvent("tougue:client:matchEnd", sid, matchId, { scores = match.scores, winner = winner })
+                TriggerClientEvent("tougue:client:matchEnd", sid, matchId, { scores = match.scores, winner = winner, extras = match.extras })
             end
 
             -- cleanup match after short delay
@@ -740,25 +776,36 @@ AddEventHandler("tougue:server:raceTimeout", function(matchId)
     -- check participant
     local isParticipant = false
     for _, sid in ipairs(match.players) do
-        if sid == src then isParticipant = true; break end
+        if sid == src then
+            isParticipant = true; break
+        end
     end
     if not isParticipant then
         print(("[tougue] raceTimeout: %s n'est pas participant du match %s"):format(tostring(src), tostring(matchId)))
         return
     end
+        -- Enregistrer le forfeit pour le joueur (Code a copier pour d'autres cas de forfeit)
+    match.extras = match.extras or {}
+    match.extras[src] = match.extras[src] or { overtakes = 0, escapes = 0, forfeits = 0 }
+    match.extras[src].forfeits = match.extras[src].forfeits + 1
+    print(("[tougue] Match %s: joueur %d a abandonné (forfeit enregistré)"):format(matchId, src))
 
     -- give win to other if present
     local other = nil
     for _, sid in ipairs(match.players) do
-        if sid ~= src then other = sid; break end
+        if sid ~= src then
+            other = sid; break
+        end
     end
 
     if other and isPlayerConnected(other) then
         match.scores[other] = (match.scores[other] or 0) + 1
         for _, sid in ipairs(match.players) do
-            TriggerClientEvent("tougue:client:roundEnd", sid, matchId, { winner = other, reason = "timeout", scores = match.scores })
+            TriggerClientEvent("tougue:client:roundEnd", sid, matchId,
+                { winner = other, reason = "timeout", scores = match.scores })
         end
-        print(("[tougue] Match %s: timeout - joueur %d remporte la manche (opposant %d a expiré)"):format(matchId, other, src))
+        print(("[tougue] Match %s: timeout - joueur %d remporte la manche (opposant %d a expiré)"):format(matchId, other,
+            src))
     else
         for _, sid in ipairs(match.players) do
             if isPlayerConnected(sid) then
@@ -782,7 +829,9 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
     -- verifier participant
     local isParticipant = false
     for _, sid in ipairs(match.players) do
-        if sid == src then isParticipant = true; break end
+        if sid == src then
+            isParticipant = true; break
+        end
     end
     if not isParticipant then return end
 
@@ -796,7 +845,7 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
     match._lastPosUpdate[src] = now
 
 
-    
+
     -- anti-teleport (vitesse impossible) : on compare avec la dernière pos stockée
     match.lastPos = match.lastPos or {}
     local prev = match.lastPos[src]
@@ -814,11 +863,12 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
         local dx = clientPos.x - prev.pos.x
         local dy = clientPos.y - prev.pos.y
         local dz = (clientPos.z or 0) - (prev.pos.z or 0)
-        local dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+        local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
         local dt = math.max(1, dt_ms) / 1000.0
         local speed = dist / dt
         if speed > MAX_SPEED_THRESHOLD then
-            print(("[tougue] [ANTI-CHEAT] ignore posUpdate %d : speed=%.1f m/s dist=%.1f dt=%dms"):format(src, speed, dist, dt_ms))
+            print(("[tougue] [ANTI-CHEAT] ignore posUpdate %d : speed=%.1f m/s dist=%.1f dt=%dms"):format(src, speed,
+                dist, dt_ms))
             match._antiCheatCount = match._antiCheatCount or {}
             match._antiCheatCount[src] = (match._antiCheatCount[src] or 0) + 1
             return
@@ -831,7 +881,9 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
     -- récupérer other joueur
     local otherSid = nil
     for _, sid in ipairs(match.players) do
-        if sid ~= src then otherSid = sid; break end
+        if sid ~= src then
+            otherSid = sid; break
+        end
     end
     if not otherSid then return end
 
@@ -843,7 +895,8 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
 
     -- récence via serverTs (plus fiable)
     if (now - (other.serverTs or other.ts or 0)) > POS_RECENT_THRESHOLD then
-        print(("[tougue] posUpdate: other pos trop ancienne (age=%dms) src=%d other=%d"):format(now - (other.serverTs or other.ts or 0), src, otherSid))
+        print(("[tougue] posUpdate: other pos trop ancienne (age=%dms) src=%d other=%d"):format(
+        now - (other.serverTs or other.ts or 0), src, otherSid))
         return
     end
 
@@ -856,13 +909,14 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
     local dz = a.z - b.z
     local dist = 0
     if USE_HORIZONTAL_ONLY then
-        dist = math.sqrt(dx*dx + dy*dy)
+        dist = math.sqrt(dx * dx + dy * dy)
     else
-        dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+        dist = math.sqrt(dx * dx + dy * dy + dz * dz)
     end
 
     -- DEBUG (supprime ou commente pour prod)
-    print(("[tougue] posUpdate: match=%s src=%d other=%d dist=%.2f (dx=%.2f dy=%.2f dz=%.2f)"):format(tostring(matchId), src, otherSid, dist, dx, dy, dz))
+    print(("[tougue] posUpdate: match=%s src=%d other=%d dist=%.2f (dx=%.2f dy=%.2f dz=%.2f)"):format(tostring(matchId),
+        src, otherSid, dist, dx, dy, dz))
 
     -- déterminer lead / chaser
     local leadSid, chaserSid
@@ -888,7 +942,8 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
             if not match._overtakeStart[chaserSid] then
                 match._overtakeStart[chaserSid] = now
             elseif (now - match._overtakeStart[chaserSid]) >= OVERTAKE_HOLD then
-                print(("[tougue] Match %s: chaser %d overtook lead %d (proj=%.2f)"):format(matchId, chaserSid, leadSid, proj))
+                print(("[tougue] Match %s: chaser %d overtook lead %d (proj=%.2f)"):format(matchId, chaserSid, leadSid,
+                    proj))
                 match._isAhead[chaserSid] = true
                 -- notify once
                 if isPlayerConnected(chaserSid) then
@@ -905,51 +960,51 @@ AddEventHandler("tougue:server:posUpdate", function(matchId, clientPos, clientTs
         end
     end
 
--- -------- CATCH (notification par transition) --------
--- flags init (assure)
-match._isCaught = match._isCaught or {}   -- bool par chaserSid
-match._isAhead = match._isAhead or {}     -- bool par chaserSid (overtake confirmé)
-match._catchStart = match._catchStart or {} -- pour hold
--- caughtCooldown supprimé: on notifie sur transitions
+    -- -------- CATCH (notification par transition) --------
+    -- flags init (assure)
+    match._isCaught = match._isCaught or {} -- bool par chaserSid
+    match._isAhead = match._isAhead or {}   -- bool par chaserSid (overtake confirmé)
+    match._catchStart = match._catchStart or {} -- pour hold
+    -- caughtCooldown supprimé: on notifie sur transitions
 
--- si proche => potentielle "rattrapé"
-if dist <= CATCH_DIST then
-    -- démarrer le timer de maintien (CATCH_HOLD) si pas démarré
-    if not match._catchStart[chaserSid] then
-        match._catchStart[chaserSid] = now
-    elseif (now - match._catchStart[chaserSid]) >= CATCH_HOLD then
-        -- si l'état "caught" n'est pas déjà actif -> on notifie l'entrée
-        if not match._isCaught[chaserSid] then
-            match._isCaught[chaserSid] = true
-            -- notifie chaser (vous êtes collé) et lead (vous êtes rattrapé)
+    -- si proche => potentielle "rattrapé"
+    if dist <= CATCH_DIST then
+        -- démarrer le timer de maintien (CATCH_HOLD) si pas démarré
+        if not match._catchStart[chaserSid] then
+            match._catchStart[chaserSid] = now
+        elseif (now - match._catchStart[chaserSid]) >= CATCH_HOLD then
+            -- si l'état "caught" n'est pas déjà actif -> on notifie l'entrée
+            if not match._isCaught[chaserSid] then
+                match._isCaught[chaserSid] = true
+                -- notifie chaser (vous êtes collé) et lead (vous êtes rattrapé)
+                if isPlayerConnected(chaserSid) then
+                    TriggerClientEvent("tougue:client:notifyCatch", chaserSid, match.id, { other = leadSid })
+                end
+                if isPlayerConnected(leadSid) then
+                    TriggerClientEvent("tougue:client:notifyCaughtBy", leadSid, match.id, { other = chaserSid })
+                end
+                print(("[tougue] Match %s: chaser %d état CATCH=true (dist=%.2f)"):format(matchId, chaserSid, dist))
+            end
+        end
+    else
+        -- si ils s'éloignent et que l'état 'caught' était actif -> notifier sortie (une seule fois)
+        if match._isCaught[chaserSid] then
+            match._isCaught[chaserSid] = nil
+            -- clear timer
+            match._catchStart[chaserSid] = nil
+            -- notifie chaser & lead qu'ils ne sont plus collés / qu'il y a separation
             if isPlayerConnected(chaserSid) then
-                TriggerClientEvent("tougue:client:notifyCatch", chaserSid, match.id, { other = leadSid })
+                TriggerClientEvent("tougue:client:notifyCatchLost", chaserSid, match.id, { other = leadSid })
             end
             if isPlayerConnected(leadSid) then
-                TriggerClientEvent("tougue:client:notifyCaughtBy", leadSid, match.id, { other = chaserSid })
+                TriggerClientEvent("tougue:client:notifyNoLongerCaught", leadSid, match.id, { other = chaserSid })
             end
-            print(("[tougue] Match %s: chaser %d état CATCH=true (dist=%.2f)"):format(matchId, chaserSid, dist))
+            print(("[tougue] Match %s: chaser %d état CATCH=false (dist=%.2f)"):format(matchId, chaserSid, dist))
+        else
+            -- assure qu'on reset le timer si juste pas encore atteint hold
+            if match._catchStart then match._catchStart[chaserSid] = nil end
         end
     end
-else
-    -- si ils s'éloignent et que l'état 'caught' était actif -> notifier sortie (une seule fois)
-    if match._isCaught[chaserSid] then
-        match._isCaught[chaserSid] = nil
-        -- clear timer
-        match._catchStart[chaserSid] = nil
-        -- notifie chaser & lead qu'ils ne sont plus collés / qu'il y a separation
-        if isPlayerConnected(chaserSid) then
-            TriggerClientEvent("tougue:client:notifyCatchLost", chaserSid, match.id, { other = leadSid })
-        end
-        if isPlayerConnected(leadSid) then
-            TriggerClientEvent("tougue:client:notifyNoLongerCaught", leadSid, match.id, { other = chaserSid })
-        end
-        print(("[tougue] Match %s: chaser %d état CATCH=false (dist=%.2f)"):format(matchId, chaserSid, dist))
-    else
-        -- assure qu'on reset le timer si juste pas encore atteint hold
-        if match._catchStart then match._catchStart[chaserSid] = nil end
-    end
-end
 
     -- -------- ESCAPE : si lead trop loin pendant assez longtemps --------
     match._escapeStart = match._escapeStart or {}
@@ -957,7 +1012,8 @@ end
         if not match._escapeStart[leadSid] then
             match._escapeStart[leadSid] = now
         elseif (now - match._escapeStart[leadSid]) >= ESCAPE_THRESHOLD then
-            print(("[tougue] Match %s: lead %d escaped from chaser %d (dist=%.2f)"):format(matchId, leadSid, chaserSid, dist))
+            print(("[tougue] Match %s: lead %d escaped from chaser %d (dist=%.2f)"):format(matchId, leadSid, chaserSid,
+                dist))
             handleRoundWin(match, leadSid, "escape")
             return
         end
@@ -1029,11 +1085,9 @@ AddEventHandler("tougue:server:engineHealth", function(matchId, engineHealth)
     if not match then return end
     -- A configurer selon besoin
     if engineHealth and engineHealth < ENGINE_HEALTH_THRESHOLD then
-
         print(("[tougue] engineHealth: joueur %d engine=%.1f -> forfeit"):format(src, tonumber(engineHealth)))
         handleForfeit(match, src, "engine_failed")
     end
-
 end)
 
 -- Event: client signale out-of-bounds (serveur peut aussi valider via posUpdate)
@@ -1076,7 +1130,8 @@ AddEventHandler("tougue:server:raceFinished", function(matchId)
 
     match.scores[src] = (match.scores[src] or 0) + 1
     for _, sid in ipairs(match.players) do
-        TriggerClientEvent("tougue:client:roundEnd", sid, matchId, { winner = src, reason = "client_finish", scores = match.scores })
+        TriggerClientEvent("tougue:client:roundEnd", sid, matchId,
+            { winner = src, reason = "client_finish", scores = match.scores })
     end
     matches[matchId] = nil
     match._isCaught = {}

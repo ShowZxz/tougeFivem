@@ -12,7 +12,7 @@ local posThread = nil
 local outOfVehicleNotified = false
 local inBoundsNotified = true
 
-local ENGINE_HEALTH_THRESHOLD = 250.0  -- seuil de santé moteur pour envoi au serveur
+local ENGINE_HEALTH_THRESHOLD = 250.0 -- seuil de santé moteur pour envoi au serveur
 
 -- COMMANDES -------------------------------------------------------
 RegisterCommand("tjoin", function()
@@ -51,7 +51,7 @@ AddEventHandler("tougue:client:notifyNoLongerCaught", function(matchId, info)
     PlaySoundFrontend(-1, "SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
 end)
 
--- overtake notifications (optionnel)
+
 RegisterNetEvent("tougue:client:notifyOvertake")
 AddEventHandler("tougue:client:notifyOvertake", function(matchId, info)
     message("Dépassement validé ! Vous avez pris l'avantage.")
@@ -88,9 +88,9 @@ AddEventHandler("tougue:client:prepareRound", function(matchId, role, modelName,
         id = matchId,
         role = role,
         track = track,
-        nextIndex = 1,          -- index attendu côté client (avancé à la confirmation serveur)
+        nextIndex = 1, -- index attendu côté client (avancé à la confirmation serveur)
         running = true,
-        sentFor = {},           -- table pour éviter d'envoyer plusieurs fois le même checkpoint
+        sentFor = {},  -- table pour éviter d'envoyer plusieurs fois le même checkpoint
     }
 
     -- debug print des checkpoints (utile au dev)
@@ -169,12 +169,14 @@ RegisterNetEvent("tougue:client:checkpointValidated")
 AddEventHandler("tougue:client:checkpointValidated", function(matchId, index)
     if not activeMatch or activeMatch.id ~= matchId then
         -- peut arriver si on a changé de round; ignore proprement
-        print(("Client: checkpointValidated reçu pour match %s mais activeMatch=%s"):format(tostring(matchId), tostring(activeMatch and activeMatch.id or "nil")))
+        print(("Client: checkpointValidated reçu pour match %s mais activeMatch=%s"):format(tostring(matchId),
+            tostring(activeMatch and activeMatch.id or "nil")))
         return
     end
     activeMatch.nextIndex = math.max(activeMatch.nextIndex, index + 1)
     if activeMatch.sentFor then activeMatch.sentFor[index] = nil end
-    print(("Client: checkpoint confirmé par serveur (%s) index=%d -> next=%d"):format(matchId, index, activeMatch.nextIndex))
+    print(("Client: checkpoint confirmé par serveur (%s) index=%d -> next=%d"):format(matchId, index,
+        activeMatch.nextIndex))
 end)
 
 -- fin de round (server notifie)
@@ -182,7 +184,8 @@ RegisterNetEvent("tougue:client:roundEnd")
 AddEventHandler("tougue:client:roundEnd", function(matchId, result)
     -- vérifier que c'est bien le match en cours
     if not activeMatch or activeMatch.id ~= matchId then
-        print(("Client: roundEnd reçu pour match %s mais activeMatch=%s"):format(tostring(matchId), tostring(activeMatch and activeMatch.id or "nil")))
+        print(("Client: roundEnd reçu pour match %s mais activeMatch=%s"):format(tostring(matchId),
+            tostring(activeMatch and activeMatch.id or "nil")))
         return
     end
 
@@ -190,7 +193,8 @@ AddEventHandler("tougue:client:roundEnd", function(matchId, result)
     activeMatch.running = false
     blockPlayerControls(false)
 
-    message("Round terminé ! Gagnant : " .. tostring(result.winner) "resoin : " ..tostring(result.reason) "Score : " ..tostring(result.score))
+    message("Round terminé ! Gagnant : " ..
+    tostring(result.winner) "resoin : " .. tostring(result.reason) "Score : " .. tostring(result.score))
 
     -- attendre un court délai pour permettre au serveur d'envoyer nextRound
     Citizen.CreateThread(function()
@@ -225,7 +229,7 @@ function DrawTxt(text, x, y)
     SetTextProportional(1)
     SetTextScale(0.35, 0.35)
     SetTextColour(255, 255, 255, 255)
-    SetTextDropShadow(0, 0, 0, 0,255)
+    SetTextDropShadow(0, 0, 0, 0, 255)
     SetTextEdge(1, 0, 0, 0, 255)
     SetTextDropShadow()
     SetTextOutline()
@@ -240,7 +244,7 @@ end
 
 -- SPAWN VEHICLE --------------------------------------------------
 function spawnCar(playerPed, modelName, coords)
-        local veh = GetVehiclePedIsIn(player, false)
+    local veh = GetVehiclePedIsIn(player, false)
     local lastVeh = GetLastDrivenVehicle()
     veh = lastVeh
     if veh and veh ~= 0 then
@@ -333,7 +337,7 @@ function startCheckpointLoop()
     local match = activeMatch
 
     checkpointThread = Citizen.CreateThread(function()
-        while match and match.running and match.nextIndex <= #match.track.checkpoints do
+        while match and match.running and match.nextIndex <= #match.track.checkpoints  do
             Wait(100)
             -- double-guard si match a été nulled ailleurs
             if not match or not match.running then break end
@@ -342,10 +346,13 @@ function startCheckpointLoop()
             local playerPos = GetEntityCoords(playerPed)
             local idx = match.nextIndex
             local cp = match.track.checkpoints[idx]
-            if not cp then break end
+            local bp = match.track.blip.coords and match.track.blip.coords[idx]
+            if not cp and bp then break end
 
             -- draw marker
-            DrawMarker(6, cp.pos.x, cp.pos.y, cp.pos.z + 1.0, 0,0,0, 0,0,0, cp.radius*2.0, cp.radius*2.0, 1.0, 0,100,255, 90, false, true, 2, nil, nil, false)
+            DrawMarker(6, cp.pos.x, cp.pos.y, cp.pos.z + 1.0, 0, 0, 0, 0, 0, 0, cp.radius * 2.0, cp.radius * 2.0, 1.0, 0,
+                100, 255, 90, false, true, 2, nil, nil, false)
+
 
             local dist = #(playerPos - vector3(cp.pos.x, cp.pos.y, cp.pos.z))
             if dist <= (cp.radius or 5.0) then
@@ -356,7 +363,8 @@ function startCheckpointLoop()
                     -- joue son + notif locale
                     playCheckpointSound()
                     message("Checkpoint " .. idx .. " atteint (envoi serveur)...")
-                    TriggerServerEvent("tougue:server:checkpointPassed", match.id, idx, { x = playerPos.x, y = playerPos.y, z = playerPos.z }, GetGameTimer())
+                    TriggerServerEvent("tougue:server:checkpointPassed", match.id, idx,
+                        { x = playerPos.x, y = playerPos.y, z = playerPos.z }, GetGameTimer())
                     match.sentFor = match.sentFor or {}
                     match.sentFor[idx] = true
                 end
@@ -409,23 +417,22 @@ function startPosLoop()
                 -- stop local match
             end
 
-                local veh = GetVehiclePedIsIn(player, false)
-                if veh and veh ~= 0 then
-                    local engineHealth = GetVehicleEngineHealth(veh) or 0
-                    print(("Client: engineHealth=%.2f"):format(engineHealth))
-                    -- send occasionally if below threshold
-                    if engineHealth < ENGINE_HEALTH_THRESHOLD then
-                        TriggerServerEvent("tougue:server:engineHealth", activeMatch.id, engineHealth)
-                        
-                    end
+            local veh = GetVehiclePedIsIn(player, false)
+            if veh and veh ~= 0 then
+                local engineHealth = GetVehicleEngineHealth(veh) or 0
+                print(("Client: engineHealth=%.2f"):format(engineHealth))
+                -- send occasionally if below threshold
+                if engineHealth < ENGINE_HEALTH_THRESHOLD then
+                    TriggerServerEvent("tougue:server:engineHealth", activeMatch.id, engineHealth)
                 end
-                
+            end
+
             if NetworkIsPlayerActive(PlayerId()) == false then
                 TriggerServerEvent("tougue:server:playerDropped", activeMatch.id)
             end
---Bounds a gérer quand on aura une track avec des bounds
+            --Bounds a gérer quand on aura une track avec des bounds
 
---[[                         local pos = GetEntityCoords(player)
+            --[[                         local pos = GetEntityCoords(player)
             if not isPosInBounds(pos, activeMatch.track) then
                 if inBoundsNotified then
                     inBoundsNotified = false

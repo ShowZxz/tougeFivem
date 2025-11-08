@@ -44,26 +44,23 @@ RegisterNetEvent("mon_script:server:serverPrint", function()
 end)
 
 
--- Table pour suivre la progression de chaque joueur (clé = source, valeur = dernier checkpoint atteint)
-local playerProgress = {}
 
-RegisterNetEvent("mon_script:server:checkpointPassed", function(checkpointIndex)
+
+
+
+RegisterNetEvent("mon_script:server:validatedBlip", function(blipIndex,tracks)
     local src = source
     local playerName = GetPlayerName(src)
-    local lastCheckpoint = playerProgress[src] or 0
-    -- Sécurité : le joueur ne peut valider que le checkpoint suivant
-    if checkpointIndex == lastCheckpoint + 1 then
-        playerProgress[src] = checkpointIndex
-        print(playerName .. " a passé le checkpoint " .. checkpointIndex)
-        if checkpointIndex == #tracks[1].checkpoints then
-            print(playerName .. " a terminé la course " .. tracks[1].name)
-            -- Ici, vous pouvez ajouter du code pour récompenser le joueur, enregistrer son temps, etc.
-            playerProgress[src] = nil -- reset pour une prochaine course
-        end
-    else
-        print("[SECURITE] " .. playerName .. " a tenté de valider un checkpoint hors ordre !")
-        -- Optionnel : sanction, message, etc.
-    end
+    print(playerName .. " a validé le blip n°" .. blipIndex)
+    TriggerClientEvent("mon_script:client:blipValidated", src, blipIndex,tracks)
+
+end)
+
+RegisterNetEvent("mon_script:client:nextBlip", function()
+    local src = source
+    local playerName = GetPlayerName(src)
+    print(playerName .. " passe au blip suivant.")
+
 end)
 
 RegisterNetEvent("mon_script:server:raceTimeout", function()
