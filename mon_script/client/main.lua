@@ -244,11 +244,12 @@ end)
 
 
 
-RegisterCommand("weather", function(weatherTypes)
-    local weatherSelected = weatherTypes or
+RegisterCommand("weather",function(source, args, rawCommand) 
+    print(args[1])
+    local weatherSelected = args[1] or
     { "CLEAR", "EXTRASUNNY", "CLOUDS", "OVERCAST", "RAIN", "THUNDER", "SMOG", "FOGGY", "XMAS", "SNOWLIGHT" }
     SetWeatherTypeOverTime(weatherSelected, 15.0)
-    message("Météo changée en: " .. weatherTypes)
+    message("Météo changée en: " .. args[1])
 end)
 
 RegisterCommand("time", function(hour, minute)
