@@ -1,0 +1,7 @@
+blend smooth entre idle
+différentes puissances selon course ?
+anti-bug (collision, pente, mur) ?
+
+régles:
+- pas trop proche d'un mur [legsup]
+- vérifié si il y a pas de toit distance minimal a établir si jamais y'a un toit [legsup]

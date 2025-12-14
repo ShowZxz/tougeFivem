@@ -20,8 +20,12 @@ local ANIM_DURATION = (TOTAL_FRAMES / ANIM_FPS) * 1000
 local SUPPORT_OFFSET = 0.80   -- distance avec le joueur supportant
 local HEIGHT_OFFSET = 0.0 -- et la hauteur
 
-local UP_FORCE = 850.0
-local FORWARD_FORCE = 3000.0
+local ARC_UP_FORCE = 10.0
+local ARC_FORWARD_FORCE = 3.0
+
+local ARC_STEP_TIME = 40
+local ARC_STEPS = 6  
+
 
 
 function alignPlayers(supportPed, liftedPed)
@@ -93,26 +97,45 @@ CreateThread(function()
 end)
 
 RegisterNetEvent("legsup:applyForce", function()
-    local ped = PlayerPedId()
-
-    local forward = GetEntityForwardVector(ped)
+   local ped = PlayerPedId()
 
     FreezeEntityPosition(ped, false)
+    SetEntityVelocity(ped, 0.0, 0.0, 0.0)
+
     Wait(BOOST_TIME)
 
     ApplyForceToEntity(
         ped,
-        1,
-
-        forward.x * FORWARD_FORCE,
-        forward.y * FORWARD_FORCE,
-        UP_FORCE,
-
+        3,                
+        0.0, 0.0, ARC_UP_FORCE,   
         0.0, 0.0, 0.0,
-        true, true, true, false, true
+        0,
+        true,              
+        true,
+        true,
+        false,
+        true
     )
 
-    busy = false
+    
+
+    Wait(100)
+    ClearPedTasks(ped)
+    for i = 1, ARC_STEPS do
+        ApplyForceToEntity(
+            ped,
+            3,
+            0.0, ARC_FORWARD_FORCE, 0.0, 
+            0.0, 0.0, 0.0,
+            0,
+            true,             
+            true,
+            true,
+            false,
+            true
+        )
+        Wait(ARC_STEP_TIME)
+    end
 end)
 
 
@@ -151,7 +174,7 @@ RegisterNetEvent("legsup:align", function(supportServerId)
 end)
 
 
-
+-- ############################################################################ TEST CODE ######################################################################################################################
 
 RegisterCommand("testemote", function()
     --local dictName = "jumplever@animation"
@@ -176,3 +199,42 @@ RegisterCommand("clearemote", function()
     local ped = PlayerPedId()
     ClearPedTasks(ped)
 end)
+
+RegisterCommand("aforce", function()
+    local ped = PlayerPedId()
+
+    FreezeEntityPosition(ped, false)
+    SetEntityVelocity(ped, 0.0, 0.0, 0.0)
+
+    -- PHASE 1 : impulsion verticale
+    ApplyForceToEntity(
+        ped,
+        3,                
+        0.0, 0.0, 10.0,   
+        0.0, 0.0, 0.0,
+        0,
+        true,              
+        true,
+        true,
+        false,
+        true
+    )
+
+    -- PHASE 2 : arc arrière
+    for i = 1, 6 do
+        ApplyForceToEntity(
+            ped,
+            3,
+            0.0, 3.0, 0.0, -- Y positif = propulsion en avant le ped
+            0.0, 0.0, 0.0,
+            0,
+            true,             
+            true,
+            true,
+            false,
+            true
+        )
+        Wait(40)
+    end
+end)
+
