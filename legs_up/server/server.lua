@@ -3,6 +3,7 @@ local supports = {}
 
 RegisterNetEvent("legsup:setSupport", function(state)
     supports[source] = state
+    print(("legsup: support state of %s set to %s"):format(source, tostring(state)))
 end)
 
 RegisterNetEvent("legsup:tryLift", function(target)
@@ -21,7 +22,6 @@ RegisterNetEvent("legsup:tryLift", function(target)
         TriggerClientEvent("legsup:clearSupport", src)
 
     else
-        -- Notify le joueur qu'il n'y a pas de support
-        --TriggerClientEvent("legsup:notifyNoSupport", src)
+        TriggerClientEvent("legsup:notifyNoSupport", src, "The target is not supporting.")
     end
 end)
