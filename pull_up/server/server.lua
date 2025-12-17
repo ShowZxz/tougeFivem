@@ -9,12 +9,13 @@ end)
 
 RegisterNetEvent("pullup:tryPullUp", function(target)
     local src = source
-
+    
     if supports[target] then
+        
         TriggerClientEvent("pullup:align", src, target)
-        --TriggerClientEvent("pullup:playBoost", target)
-        --TriggerClientEvent("pullup:playJump", src)
-        TriggerClientEvent("pullup:pullingUp", src)
+        TriggerClientEvent("pullup:playUpBoost", target)
+        TriggerClientEvent("pullup:playJump", src)
+        TriggerClientEvent("pullup:pullingUp", src, target)
 
         
         supports[target] = false
