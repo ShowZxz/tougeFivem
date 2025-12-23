@@ -7,6 +7,7 @@ RegisterNetEvent("legsup:setSupport", function(state)
 end)
 
 RegisterNetEvent("legsup:tryLift", function(target)
+    print(("legsup: %s is trying to lift %s"):format(source, target))
     local src = source
 
     if supports[target] then

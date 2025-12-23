@@ -1,6 +1,6 @@
 différentes puissances selon course ?
 
-anti-bug (collision, pente, mur) ?
+
 
 régles:
 - pas trop proche d'un mur [legsup] --
@@ -10,4 +10,4 @@ régles:
 A FAIRE :
 
 - Refaire les animations
--
+- Cooldown legsup éviter les triches

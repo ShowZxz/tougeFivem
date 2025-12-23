@@ -7,18 +7,18 @@ local LEGSUP_COOLDOWN = 5000
 local showCooldown = false
 local cooldownEnd = 0
 
-local dictJump = "jumplever@animation"
-local animJump = "jumplever_clip"
+local dictJump = "lifted@animation"
+local animJump = "lifted_clip"
 
-local dictLift = "liftanim@animation"
-local animLift = "liftanim_clip"
+local dictLift = "liftanima@animation"
+local animLift = "liftanima_clip"
 
 local dictIdle = "liftidle@pose"
 local animIdle = "liftidle_clip"
 
 local ANIM_FPS = 60
-local BOOST_FRAME = 100
-local TOTAL_FRAMES = 300
+local BOOST_FRAME = 20
+local TOTAL_FRAMES = 100
 
 local BOOST_TIME = (BOOST_FRAME / ANIM_FPS) * 1000
 local ANIM_DURATION = (TOTAL_FRAMES / ANIM_FPS) * 1000
@@ -157,6 +157,7 @@ RegisterCommand("legsup", function()
         return
     end
     if supporting then
+        FreezeEntityPosition(ped, true)
         RequestAnimDict(dictIdle)
         while not HasAnimDictLoaded(dictIdle) do Wait(10) end
 
@@ -165,6 +166,7 @@ RegisterCommand("legsup", function()
         message("Vous êtes prêt à soutenir un joueur.")
     else
         ClearPedTasks(PlayerPedId())
+        FreezeEntityPosition(ped, false)
         TriggerServerEvent("legsup:setSupport", false)
     end
 end)
@@ -184,6 +186,7 @@ CreateThread(function()
             if targetPed ~= ped then
                 local dist = #(coords - GetEntityCoords(targetPed))
                 if dist < 1.5 and IsControlJustPressed(0, 38) and not supporting then
+                    if busy then return end                    
                     local now = GetGameTimer()
                     if now - lastLegsup < LEGSUP_COOLDOWN then
                         errorMsg("⏳ Attendez avant de refaire une courte échelle")
@@ -210,6 +213,7 @@ CreateThread(function()
                     lastLegsup = now
                     cooldownEnd = now + LEGSUP_COOLDOWN
                     showCooldown = true
+                    print("Trigger legsup:tryLift to server")
                     TriggerServerEvent("legsup:tryLift", GetPlayerServerId(player))
                 end
             end
@@ -222,14 +226,15 @@ end)
 RegisterNetEvent("legsup:applyForce", function()
     local ped = PlayerPedId()
 
-    FreezeEntityPosition(ped, false)
+
     local coords = GetEntityCoords(ped)
-    SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z + 0.15, false, false, false)
+    SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z + 0.35, true, false, false)
     SetPedCanRagdoll(ped, false)
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
 
     Wait(BOOST_TIME)
-    ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.10)
+    ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.05)
+    FreezeEntityPosition(ped, false)
     ApplyForceToEntity(
         ped,
         3,
@@ -290,6 +295,7 @@ RegisterNetEvent("legsup:clearSupport", function()
     supporting = false
     busy = false
     FreezeEntityPosition(PlayerPedId(), false)
+    
 end)
 
 RegisterNetEvent("legsup:align", function(supportServerId)
@@ -341,8 +347,15 @@ RegisterCommand("testemote", function()
     --local dictName = "jumplever@animation"
     --local animName = "jumplever_clip"
 
-    local dictName = "liftanim@animation"
-    local animName = "liftanim_clip"
+    --local dictName = "liftanima@animation"
+    --local animName = "liftanima_clip"
+
+    --local dictName = "pulledup@animation"
+    --local animName = "pulledup_clip"
+
+    local dictName = "lifted@animation"
+    local animName = "lifted_clip"
+    
 
     --local dictName = "liftidle@pose"
     --local animName = "liftidle_clip"

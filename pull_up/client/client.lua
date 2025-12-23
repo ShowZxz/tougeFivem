@@ -152,6 +152,8 @@ CreateThread(function()
             if targetPed ~= ped then
                 local dist = #(coords - GetEntityCoords(targetPed))
                 if dist < PULLING_HEIGHT and IsControlJustPressed(0, 38) and not supporting then
+                    if busy then return end  
+                    
                     local now = GetGameTimer()
                     if now - lastPullup < lastPullup_COOLDOWN then
                         errorMsg("⏳ Attendez avant de refaire un pull up")
@@ -160,7 +162,7 @@ CreateThread(function()
 
                     
                     if not isSupportStateValid(ped) then
-                        errorMsg("❌ Position invalide pour faire une courte échelle")
+                        errorMsg("❌ Position invalide pour faire un pull up")
                         goto continue
                     end
 
