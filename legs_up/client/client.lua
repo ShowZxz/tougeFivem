@@ -1,5 +1,7 @@
 local supporting = false
 local busy = false
+local canLegsup = false
+local potentialSupport = nil
 
 local lastLegsup = 0
 local LEGSUP_COOLDOWN = 5000
@@ -91,7 +93,7 @@ function isNearWall(ped, distance)
     local hitFront = getRayHit(rayFront)
     local hitBack  = getRayHit(rayBack)
 
-    print("Front:", hitFront, "Back:", hitBack)
+    --print("Front:", hitFront, "Back:", hitBack)
 
     return hitFront or hitBack
 end
@@ -135,6 +137,11 @@ function isSupportStateValid(ped)
     )
 end
 
+function startLegsup(state, targetPed)
+
+    
+end
+
 RegisterCommand("legsup", function()
     local ped = PlayerPedId()
     if busy then return end
@@ -174,54 +181,44 @@ end)
 
 CreateThread(function()
     while true do
-        Wait(0)
+        Wait(200)
 
-        if busy then goto continue end
+        canLegsup = false
+        potentialSupport = nil
 
         local ped = PlayerPedId()
         local coords = GetEntityCoords(ped)
 
         for _, player in ipairs(GetActivePlayers()) do
             local targetPed = GetPlayerPed(player)
+
             if targetPed ~= ped then
-                local dist = #(coords - GetEntityCoords(targetPed))
-                if dist < 1.5 and IsControlJustPressed(0, 38) and not supporting then
-                    if busy then return end                    
-                    local now = GetGameTimer()
-                    if now - lastLegsup < LEGSUP_COOLDOWN then
-                        errorMsg("⏳ Attendez avant de refaire une courte échelle")
-                        goto continue
+                if #(coords - GetEntityCoords(targetPed)) < 1.5 then
+                    if isSupportStateValid(ped)
+                    and not isNearWall(ped, MIN_WALL_DISTANCE)
+                    and not hasRoofAbove(ped, MIN_ROOF_HEIGHT) then
+                        canLegsup = true
+                        potentialSupport = GetPlayerServerId(player)
+                        break
                     end
-
-                    if isNearWall(ped, MIN_WALL_DISTANCE) then
-                        errorMsg("❌ Trop proche d'un mur pour faire une courte échelle")
-                        goto continue
-                    end
-
-                    if hasRoofAbove(ped, MIN_ROOF_HEIGHT) then
-                        errorMsg("❌ Pas assez de hauteur au-dessus")
-                        goto continue
-                    end
-
-                    if not isSupportStateValid(ped) then
-                        errorMsg("❌ Position invalide pour faire une courte échelle")
-                        goto continue
-                    end
-
-                    
-                    busy = true
-                    lastLegsup = now
-                    cooldownEnd = now + LEGSUP_COOLDOWN
-                    showCooldown = true
-                    print("Trigger legsup:tryLift to server")
-                    TriggerServerEvent("legsup:tryLift", GetPlayerServerId(player))
                 end
             end
         end
-
-        ::continue::
     end
 end)
+
+CreateThread(function()
+    while true do
+        Wait(0)
+        print("canLegsup:", tostring(canLegsup), "potentialSupport:", tostring(potentialSupport))
+        if canLegsup and IsControlJustPressed(0, 38) then
+            TriggerServerEvent("legsup:tryLift", potentialSupport)
+        end
+    end
+end)
+
+
+
 
 RegisterNetEvent("legsup:applyForce", function()
     local ped = PlayerPedId()
