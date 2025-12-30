@@ -6,15 +6,17 @@ Config.Keys = {
 
 Config.Distances = {
     LEGSUP_MAX = 1.5,
-    PULLUP_MIN = 2.0,
+    PULLUP_MIN = 3.0,
     PULLUP_MAX = 5.0,
     MIN_WALL_DISTANCE = 2.0,
     MIN_ROOF_HEIGHT = 3.0
 }
 
 Config.Cooldowns = {
-    LEGSUP = 5000,
-    PULLUP = 5000
+    INTERACTION = {
+        LEGSUP = 5000,
+        PULLUP = 5000
+    }
 }
 
 Config.Animation = {
@@ -41,4 +43,33 @@ Config.Animation = {
         ANIMLIFT = "pullupanimation_clip"
 
     }
+}
+
+Config.Frame = {
+    ANIM_FPS = 60,
+    BOOST_FRAME = 20,
+    TOTAL_FRAMES = 100
+}
+
+Config.Arc = {
+    ARC_UP_FORCE = 10.0,
+    ARC_FORWARD_FORCE = 3.0,
+    ARC_STEP_TIME = 40,
+    ARC_STEPS = 6
+}
+
+Config.Pulling = {
+    PULLING_DURATION = 1200,
+    PULLING_HEIGHT = 5.0
+}
+
+Config.OffsetPullup = {
+    FRONT_OFFSET = 1.5,   
+    SIDE_OFFSET  = 0.0, 
+    Z_OFFSET     = 0.0 
+}
+
+Config.OffsetLegsup = {
+    SUPPORT_OFFSET = 0.80,   
+    HEIGHT_OFFSET  = 0.0
 }

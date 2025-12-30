@@ -1,8 +1,10 @@
-local lastUse = 0
+print("Loading interaction_lift client main.lua")
 local activeAction = nil
 local targetServerId = nil
 local supporting = false
 local supportMode = nil
+
+local ANIM_DURATION = (Config.Frame.TOTAL_FRAMES / Config.Frame.ANIM_FPS) * 1000
 
 local lastUse = {
     legsup = 0,
@@ -43,14 +45,14 @@ end)
 CreateThread(function()
     while true do
         Wait(0)
-
+        --print("Action:", activeAction, "TargetServerId:", targetServerId)
         if not activeAction then goto continue end
-        if not IsControlJustPressed(0, Config.KeyInteract) then goto continue end
+        if not IsControlJustPressed(0, Config.Keys.INTERACT) then goto continue end
 
         local now = GetGameTimer()
 
         
-        local cd = Config.Cooldown[activeAction:upper()]
+        local cd = Config.Cooldowns.INTERACTION[activeAction:upper()]
         local last = lastUse[activeAction]
 
         if now - last < cd then
@@ -60,11 +62,13 @@ CreateThread(function()
         end
 
         lastUse[activeAction] = now
-
+        
         if activeAction == "legsup" then
+            print("Starting legsup on targetServerId:", targetServerId)
             Legsup.Start(targetServerId)
         elseif activeAction == "pullup" then
             PullUp.Start(targetServerId)
+            print("Starting pullup on targetServerId:", targetServerId)
         end
 
         ::continue::
@@ -147,4 +151,13 @@ RegisterCommand("legsup", function()
         FreezeEntityPosition(ped, false)
         TriggerServerEvent("interaction_lift:setSupport", false)
     end
+end)
+
+
+RegisterNetEvent("interaction_lift:clearSupport", function()
+    Wait(ANIM_DURATION)
+    ClearPedTasks(PlayerPedId())
+    FreezeEntityPosition(PlayerPedId(), false)
+    supporting = false
+    supportMode = nil
 end)
