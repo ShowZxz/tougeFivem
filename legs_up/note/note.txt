@@ -11,7 +11,7 @@ A FAIRE :
 
 - Refaire les animations
 - Cooldown pour les registercommands
-- distance 1m du mur pour pulling up
-- Version standalone avec interact bouton
+- distance 1m du mur pour pulling up / DANS UN AUTRE REALASE
+- Version standalone avec interact bouton -- 
 - VERSION ALT click
 - VERSION ESX

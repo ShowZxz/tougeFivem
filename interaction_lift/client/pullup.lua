@@ -28,6 +28,21 @@ function errorMsg(msg)
     EndTextCommandThefeedPostTicker(true, true)
 end
 
+function isSupportStateValid(ped)
+    return not (
+        IsPedInAnyVehicle(ped, true) or
+        IsPedFalling(ped) or
+        IsPedRagdoll(ped) or
+        IsPedSwimming(ped) or
+        IsPedClimbing(ped) or
+        IsPedInCombat(ped) or
+        IsPedShooting(ped) or
+        IsPedJumping(ped)
+
+
+    )
+end
+
 function alignPullupPlayers(supportPed, liftedPed)
     local supportCoords = GetEntityCoords(supportPed)
     local liftedCoords  = GetEntityCoords(liftedPed)
@@ -104,7 +119,7 @@ RegisterNetEvent("pullup:pullingUp", function(supportServerId)
     local supportPed = GetPlayerPed(GetPlayerFromServerId(supportServerId))
 
     if not DoesEntityExist(supportPed) then
-        errorMsg("Support introuvable")
+        --errorMsg("Support introuvable")
         return
     end
 

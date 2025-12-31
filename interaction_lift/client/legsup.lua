@@ -116,13 +116,7 @@ function alignLegsupPlayers(supportPed, liftedPed)
 end
 
 
-RegisterNetEvent("interaction_lift:denied", function(reason)
-    errorMsg(reason)
-end)
 
-RegisterNetEvent("interaction_lift:info", function(info)
-    message(info)
-end)
 
 RegisterNetEvent("legsup:align", function(supportServerId)
     local liftedPed = PlayerPedId()

@@ -1,7 +1,9 @@
 Config = {}
 
 Config.Keys = {
-    INTERACT = 38 -- E
+    INTERACT = 38, -- E
+    LEGSUP_SUPPORT = 23, -- F
+    PULLUP_SUPPORT = 47  -- G
 }
 
 Config.Distances = {
@@ -18,6 +20,8 @@ Config.Cooldowns = {
         PULLUP = 5000
     }
 }
+
+Config.SupportToggleCooldown = 5000 -- ms
 
 Config.Animation = {
     LEGSUP = {
@@ -73,3 +77,6 @@ Config.OffsetLegsup = {
     SUPPORT_OFFSET = 0.80,   
     HEIGHT_OFFSET  = 0.0
 }
+
+-- Set to true to enable debug commands like /legsup and /pullup
+Config.debug = false

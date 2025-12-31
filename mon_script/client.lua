@@ -1,5 +1,8 @@
 -- Commande pour afficher un checkpoint persistant à la position du joueur
 local checkpointThread = nil
+-- Protection anti-void : conserve la dernière position sûre et téléporte si le joueur tombe trop bas
+local lastSafePos = nil
+
 RegisterCommand("checkpoint", function()
     local player = PlayerPedId()
     local coords = GetEntityCoords(player)
