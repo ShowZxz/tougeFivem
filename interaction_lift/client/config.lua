@@ -80,3 +80,6 @@ Config.OffsetLegsup = {
 
 -- Set to true to enable debug commands like /legsup and /pullup
 Config.debug = false
+
+-- Set to true to disable the interaction buttons and use only Alt+Click interactions ESX / QBcore style
+Config.DisableInteractionButtons = true

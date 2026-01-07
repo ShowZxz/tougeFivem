@@ -82,7 +82,7 @@ CreateThread(function()
 
         lastUse[activeAction] = now
         
-        if activeAction == "legsup" then      
+        if activeAction == "legsup" then   
             Legsup.Start(targetServerId)
         elseif activeAction == "pullup" then
             PullUp.Start(targetServerId)
@@ -156,7 +156,7 @@ CreateThread(function()
                     1, 0, false, false, false
                 )
 
-                TriggerServerEvent("interaction_lift:setSupport", true, "legsup")
+                TriggerServerEvent("interaction_lift:setSupport", true)
                 message("🦵 Vous êtes prêt à soutenir (LegsUp)")
             else
                 ClearPedTasks(ped)
@@ -188,7 +188,7 @@ CreateThread(function()
             lastSupportToggle = now
 
             if supporting then
-                FreezeEntityPosition(ped, true)
+                --FreezeEntityPosition(ped, true)
 
                 RequestAnimDict(Config.Animation.PULLUP.DICTIDLE)
                 while not HasAnimDictLoaded(Config.Animation.PULLUP.DICTIDLE) do
@@ -207,7 +207,7 @@ CreateThread(function()
                 message("🧗 Vous êtes prêt à hisser un joueur")
             else
                 ClearPedTasks(ped)
-                FreezeEntityPosition(ped, false)
+                --FreezeEntityPosition(ped, false)
                 TriggerServerEvent("interaction_lift:setSupport", false)
                 message("Support PullUp désactivé")
             end
@@ -241,6 +241,7 @@ end)
 RegisterNetEvent("interaction_lift:clearSupport", function()
     Wait(ANIM_DURATION)
     ClearPedTasks(PlayerPedId())
+    message("Support désactivé")
     FreezeEntityPosition(PlayerPedId(), false)
     supporting = false
     supportMode = nil
@@ -334,4 +335,10 @@ RegisterCommand("legsup", function()
         FreezeEntityPosition(ped, false)
         TriggerServerEvent("interaction_lift:setSupport", false)
     end
+end)
+
+RegisterCommand("testc", function()
+    RequestAnimDict(Config.Animation.LEGSUP.DICTLIFT)
+    while not HasAnimDictLoaded(Config.Animation.LEGSUP.DICTLIFT) do Wait(10) end
+    TaskPlayAnim(PlayerPedId(), Config.Animation.LEGSUP.DICTLIFT, Config.Animation.LEGSUP.ANIMLIFT, 8.0, -8.0, -1, 1, 0, false, false, false)
 end)

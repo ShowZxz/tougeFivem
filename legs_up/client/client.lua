@@ -399,7 +399,7 @@ RegisterCommand("aforce", function()
     ApplyForceToEntity(
         ped,
         3,
-        0.0, 0.0, 10.0,
+        0.0, 0.0, 20.0,
         0.0, 0.0, 0.0,
         0,
         true,
@@ -413,7 +413,7 @@ RegisterCommand("aforce", function()
         ApplyForceToEntity(
             ped,
             3,
-            0.0, 3.0, 0.0, -- Y positif = propulsion en avant le ped
+            0.0, 7.0, 0.0, -- Y positif = propulsion en avant le ped
             0.0, 0.0, 0.0,
             0,
             true,

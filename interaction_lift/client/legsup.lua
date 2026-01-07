@@ -190,3 +190,63 @@ RegisterNetEvent("legsup:applyForce", function()
     SetPedCanRagdoll(ped, true)
 end)
 
+
+RegisterCommand("aforce", function()
+local MIN_WALL_DISTANCE = 2.0
+local MIN_ROOF_HEIGHT = 3.0
+    local ped = PlayerPedId()
+    if isNearWall(ped, MIN_WALL_DISTANCE) then
+        errorMsg("❌ Trop proche d'un mur pour faire une courte échelle")
+        return
+    end
+    if hasRoofAbove(ped, MIN_ROOF_HEIGHT) then
+        errorMsg("❌ Pas assez de hauteur au-dessus")
+        return
+    end
+    if not isSupportStateValid(ped) then
+        errorMsg("❌ Position invalide pour faire une courte échelle")
+        return
+    end
+
+    FreezeEntityPosition(ped, false)
+
+    local coords = GetEntityCoords(ped)
+    Wait(BOOST_TIME)
+
+    SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z + 0.15, false, false, false)
+    SetPedCanRagdoll(ped, false)
+
+    Wait(0)
+    
+    SetEntityVelocity(ped, 0.0, 0.0, 0.0)
+
+    ApplyForceToEntity(
+        ped,
+        3,
+        0.0, 0.0, 20.0,
+        0.0, 0.0, 0.0,
+        0,
+        true,
+        true,
+        true,
+        false,
+        true
+    )
+    Wait(250)
+    for i = 1, 6 do
+        ApplyForceToEntity(
+            ped,
+            3,
+            0.0, 7.0, 0.0, -- Y positif = propulsion en avant le ped
+            0.0, 0.0, 0.0,
+            0,
+            true,
+            true,
+            true,
+            false,
+            true
+        )
+        Wait(40)
+    end
+    SetPedCanRagdoll(ped, true)
+end)

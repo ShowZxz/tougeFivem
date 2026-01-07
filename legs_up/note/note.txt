@@ -10,8 +10,13 @@ régles:
 A FAIRE :
 
 - Refaire les animations
-- Cooldown pour les registercommands
+- Cooldown pour les registercommands A VOIR
 - distance 1m du mur pour pulling up / DANS UN AUTRE REALASE
 - Version standalone avec interact bouton -- 
+- Duplication de fonction a retirer
+- Freeze entity a retirer a cause du altclick
+- qb_target a test
+- Support.lua a commenter  
+- Ajouter le fix de applyforce
 - VERSION ALT click
 - VERSION ESX
