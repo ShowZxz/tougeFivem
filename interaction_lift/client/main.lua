@@ -97,123 +97,17 @@ CreateThread(function()
     while true do
         Wait(0)
 
-        local ped = PlayerPedId()
-        local now = GetGameTimer()
-
-
-        if now - lastSupportToggle < Config.SupportToggleCooldown then
-            goto continue
-        end
-
-
-        -- LEGSUP SUPPORT 
-
         if IsControlJustPressed(0, Config.Keys.LEGSUP_SUPPORT) then
-
-            if supporting and supportMode ~= "legsup" then
-                errorMsg("❌ Vous êtes déjà en train de soutenir autrement")
-                goto continue
-            end
-
-
-            if not supporting then
-                if isNearWall(ped, Config.Distances.MIN_WALL_DISTANCE) then
-                    errorMsg("❌ Trop proche d'un mur pour une courte échelle")
-                    goto continue
-                end
-
-                if hasRoofAbove(ped, Config.Distances.MIN_ROOF_HEIGHT) then
-                    errorMsg("❌ Pas assez de hauteur au-dessus")
-                    goto continue
-                end
-
-                if not isSupportStateValid(ped) then
-                    errorMsg("❌ Position invalide pour une courte échelle")
-                    goto continue
-                end
-            end
-
-            supporting = not supporting
-            supportMode = supporting and "legsup" or nil
-            lastSupportToggle = now
-
-            cooldownEnd = now + Config.SupportToggleCooldown
-            showCooldown = true
-
-            if supporting then
-                FreezeEntityPosition(ped, true)
-
-                RequestAnimDict(Config.Animation.LEGSUP.DICTIDLE)
-                while not HasAnimDictLoaded(Config.Animation.LEGSUP.DICTIDLE) do
-                    Wait(10)
-                end
-
-                TaskPlayAnim(
-                    ped,
-                    Config.Animation.LEGSUP.DICTIDLE,
-                    Config.Animation.LEGSUP.ANIMIDLE,
-                    8.0, -8.0, -1,
-                    1, 0, false, false, false
-                )
-
-                TriggerServerEvent("interaction_lift:setSupport", true)
-                message("🦵 Vous êtes prêt à soutenir (LegsUp)")
-            else
-                ClearPedTasks(ped)
-                FreezeEntityPosition(ped, false)
-                TriggerServerEvent("interaction_lift:setSupport", false)
-                message("Support LegsUp désactivé")
-            end
+            TriggerEvent("interaction_lift:support:enable", "legsup")
         end
-
-
-        -- PULLUP SUPPORT 
 
         if IsControlJustPressed(0, Config.Keys.PULLUP_SUPPORT) then
-
-            if supporting and supportMode ~= "pullup" then
-                errorMsg("❌ Vous êtes déjà en train de soutenir autrement")
-                goto continue
-            end
-
-            if not supporting then
-                if not isSupportStateValid(ped) then
-                    errorMsg("❌ Position invalide pour un pull-up")
-                    goto continue
-                end
-            end
-
-            supporting = not supporting
-            supportMode = supporting and "pullup" or nil
-            lastSupportToggle = now
-
-            if supporting then
-                --FreezeEntityPosition(ped, true)
-
-                RequestAnimDict(Config.Animation.PULLUP.DICTIDLE)
-                while not HasAnimDictLoaded(Config.Animation.PULLUP.DICTIDLE) do
-                    Wait(10)
-                end
-
-                TaskPlayAnim(
-                    ped,
-                    Config.Animation.PULLUP.DICTIDLE,
-                    Config.Animation.PULLUP.ANIMIDLE,
-                    8.0, -8.0, -1,
-                    1, 0, false, false, false
-                )
-
-                TriggerServerEvent("interaction_lift:setSupport", true, "pullup")
-                message("🧗 Vous êtes prêt à hisser un joueur")
-            else
-                ClearPedTasks(ped)
-                --FreezeEntityPosition(ped, false)
-                TriggerServerEvent("interaction_lift:setSupport", false)
-                message("Support PullUp désactivé")
-            end
+            TriggerEvent("interaction_lift:support:enable", "pullup")
         end
 
-        ::continue::
+        if IsControlJustPressed(0, Config.Keys.TOGGLE_SUPPORT) then
+            TriggerEvent("interaction_lift:support:disable")
+        end
     end
 end)
 
@@ -342,3 +236,5 @@ RegisterCommand("testc", function()
     while not HasAnimDictLoaded(Config.Animation.LEGSUP.DICTLIFT) do Wait(10) end
     TaskPlayAnim(PlayerPedId(), Config.Animation.LEGSUP.DICTLIFT, Config.Animation.LEGSUP.ANIMLIFT, 8.0, -8.0, -1, 1, 0, false, false, false)
 end)
+
+ 

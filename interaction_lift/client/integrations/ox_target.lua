@@ -3,78 +3,36 @@ CreateThread(function()
 
     print("[interaction_lift] ox_target detected")
 
-    -- Interactions SUR JOUEUR
-    exports.ox_target:addGlobalPlayer({
+    RegisterNetEvent("interaction_lift:registerSupportTarget", function(entity)
+    if not entity or not DoesEntityExist(entity) then return end
+
+    exports.ox_target:addLocalEntity(entity, {
+        {
+            name = "interaction_lift_use",
+            label = "Utiliser le support",
+            icon = "fa-solid fa-hand",
+            distance = 2.0,
+            onSelect = function()
+                TriggerEvent("interaction_lift:useSupport")
+            end
+        }
+    })
+end)
+
+RegisterNetEvent("interaction_lift:registerLegsupTarget", function(entity, targetServerId)
+    if not entity or not DoesEntityExist(entity) then return end
+
+    exports.ox_target:addLocalEntity(entity, {
         {
             name = "interaction_lift_legsup",
-            label = "🦵 Courte échelle",
-            icon = "person-arrow-up-from-line",
-            distance = Config.Distances.LEGSUP_MAX,
-            canInteract = function(entity)
-                local ped = PlayerPedId()
-                local dist = #(GetEntityCoords(ped) - GetEntityCoords(entity))
-                return Legsup.CanUse(ped, entity, dist)
-            end,
-            onSelect = function(data)
-                local target = GetPlayerServerId(
-                    NetworkGetPlayerIndexFromPed(data.entity)
-                )
-                Legsup.Start(target)
-            end
-        },
-        {
-            name = "interaction_lift_pullup",
-            label = "🧗 Aider à grimper",
-            icon = "hand",
-            distance = Config.Distances.PULLUP_MAX,
-            canInteract = function(entity)
-                local ped = PlayerPedId()
-                local dist = #(GetEntityCoords(ped) - GetEntityCoords(entity))
-                return PullUp.CanUse(ped, entity, dist)
-            end,
-            onSelect = function(data)
-                local target = GetPlayerServerId(
-                    NetworkGetPlayerIndexFromPed(data.entity)
-                )
-                PullUp.Start(target)
+            label = "Mettre en jambes en l'air",
+            icon = "fa-solid fa-person-walking-luggage",
+            distance = 2.0,
+            onSelect = function()
+                TriggerServerEvent("interaction_lift:legsup", targetServerId)
             end
         }
     })
+end)
 
-    -- Interactions SUR SOI-MÊME
-    exports.ox_target:addGlobalPlayer({
-        {
-            name = "interaction_lift_support_legsup",
-            label = "🦵 Se mettre en support (LegsUp)",
-            icon = "person",
-            canInteract = function(entity)
-                return entity == PlayerPedId()
-            end,
-            onSelect = function()
-                Support.Toggle("legsup")
-            end
-        },
-        {
-            name = "interaction_lift_support_pullup",
-            label = "🧗 Se mettre en support (PullUp)",
-            icon = "person",
-            canInteract = function(entity)
-                return entity == PlayerPedId()
-            end,
-            onSelect = function()
-                Support.Toggle("pullup")
-            end
-        },
-        {
-            name = "interaction_lift_support_off",
-            label = "❌ Désactiver le support",
-            icon = "ban",
-            canInteract = function(entity)
-                return entity == PlayerPedId() and Support.active
-            end,
-            onSelect = function()
-                Support.Toggle(nil)
-            end
-        }
-    })
 end)

@@ -2,8 +2,9 @@ Config = {}
 
 Config.Keys = {
     INTERACT = 38, -- E
-    LEGSUP_SUPPORT = 23, -- F
-    PULLUP_SUPPORT = 47  -- G
+    LEGSUP_SUPPORT = 113, -- G
+    PULLUP_SUPPORT = 246,  -- H
+    TOGGLE_SUPPORT = 73 -- X
 }
 
 Config.Distances = {

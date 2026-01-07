@@ -1,44 +1,43 @@
 Support = {
     active = false,
-    mode = nil, -- "legsup" | "pullup"
+    mode = nil,
     lastToggle = 0
 }
 
-function Support.CanToggle()
+
+local function canToggle()
     local now = GetGameTimer()
-    return now - Support.lastToggle >= Config.SupportToggleCooldown
+    if now - Support.lastToggle < Config.SupportToggleCooldown then
+        return false
+    end
+    Support.lastToggle = now
+    return true
 end
 
-function Support.Toggle(mode)
+function Support.IsActive()
+    return Support.active, Support.mode
+end
+
+
+RegisterNetEvent("interaction_lift:support:enable", function(mode)
     local ped = PlayerPedId()
     local now = GetGameTimer()
 
-    if not Support.CanToggle() then
-        errorMsg("⏳ Action indisponible")
+    if not canToggle() then return end
+
+    -- déjà actif avec un autre mode
+    if Support.active and Support.mode ~= mode then
+        errorMsg("❌ Vous êtes déjà en train de soutenir autrement")
         return
     end
 
-    -- Désactivation
-    if Support.active and (mode == nil or mode ~= Support.mode) then
-        ClearPedTasks(ped)
-        FreezeEntityPosition(ped, false)
-        TriggerServerEvent("interaction_lift:setSupport", false)
-
-        Support.active = false
-        Support.mode = nil
-        Support.lastToggle = now
-
-        message("Support désactivé")
+    -- désactivation si même mode
+    if Support.active and Support.mode == mode then
+        TriggerEvent("interaction_lift:support:disable")
         return
     end
 
-    -- Validation commune
-    if not isSupportStateValid(ped) then
-        errorMsg("❌ Position invalide")
-        return
-    end
-
-    -- Validations spécifiques
+    -- ===== VALIDATIONS =====
     if mode == "legsup" then
         if isNearWall(ped, Config.Distances.MIN_WALL_DISTANCE) then
             errorMsg("❌ Trop proche d'un mur")
@@ -48,18 +47,30 @@ function Support.Toggle(mode)
             errorMsg("❌ Pas assez de hauteur")
             return
         end
+        if not isSupportStateValid(ped) then
+            errorMsg("❌ Position invalide")
+            return
+        end
     end
 
-    -- Activation
+    if mode == "pullup" then
+        if not isSupportStateValid(ped) then
+            errorMsg("❌ Position invalide pour un pull-up")
+            return
+        end
+    end
+
+    -- ===== ACTIVATE =====
     Support.active = true
     Support.mode = mode
-    Support.lastToggle = now
 
     FreezeEntityPosition(ped, true)
 
     local anim = Config.Animation[mode:upper()]
     RequestAnimDict(anim.DICTIDLE)
-    while not HasAnimDictLoaded(anim.DICTIDLE) do Wait(10) end
+    while not HasAnimDictLoaded(anim.DICTIDLE) do
+        Wait(10)
+    end
 
     TaskPlayAnim(
         ped,
@@ -70,13 +81,20 @@ function Support.Toggle(mode)
     )
 
     TriggerServerEvent("interaction_lift:setSupport", true, mode)
+    message(("Support %s activé"):format(mode))
+end)
 
-    message(("✅ Support %s activé"):format(mode))
-end
+RegisterNetEvent("interaction_lift:support:disable", function()
+    if not Support.active then return end
 
-RegisterNetEvent("interaction_lift:clearSupport", function()
-    ClearPedTasks(PlayerPedId())
-    FreezeEntityPosition(PlayerPedId(), false)
+    local ped = PlayerPedId()
+
     Support.active = false
     Support.mode = nil
+
+    ClearPedTasks(ped)
+    FreezeEntityPosition(ped, false)
+
+    TriggerServerEvent("interaction_lift:setSupport", false)
+    message("❌ Support désactivé")
 end)

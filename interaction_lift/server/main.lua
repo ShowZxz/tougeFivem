@@ -4,8 +4,13 @@ local COOLDOWN = 5000
 local MAX_LEGSUP_DISTANCE = 1.6
 local MAX_PULLUP_DISTANCE = 5.0
 
-RegisterNetEvent("interaction_lift:setSupport", function(state)
+RegisterNetEvent("interaction_lift:setSupport", function(state, mode)
     supports[source] = state
+
+    if mode then
+        print(("interaction_lift: support state of %s set to %s | Resquested a %s"):format(source, tostring(state),
+            tostring(mode)))
+    end
     print(("interaction_lift: support state of %s set to %s"):format(source, tostring(state)))
 end)
 
@@ -64,7 +69,7 @@ RegisterNetEvent("interaction_lift:legsup", function(target)
 
     TriggerClientEvent("legsup:applyForce", src)
 
-    
+
     TriggerClientEvent("interaction_lift:clearSupport", src)
     TriggerClientEvent("interaction_lift:clearSupport", target)
 end)
