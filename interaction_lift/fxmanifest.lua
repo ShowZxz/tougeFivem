@@ -9,6 +9,8 @@ client_script { 'client/config.lua',
 'client/integrations/esx.lua',
 'client/integrations/qb.lua',
 'client/integrations/ox_target.lua',
-'client/integrations/qb_target.lua' }
+'client/integrations/qb_target.lua',
+'client/integrations/proxy.lua'
+}
 
 server_script {'server/main.lua'}

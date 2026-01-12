@@ -84,3 +84,5 @@ Config.debug = false
 
 -- Set to true to disable the interaction buttons and use only Alt+Click interactions ESX / QBcore style
 Config.DisableInteractionButtons = true
+
+Config.EnableOxTargetIntegration = true

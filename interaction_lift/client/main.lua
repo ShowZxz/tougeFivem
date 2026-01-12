@@ -67,6 +67,7 @@ CreateThread(function()
         
         if not activeAction then goto continue end
         if not IsControlJustPressed(0, Config.Keys.INTERACT) then goto continue end
+        if not Config.EnableInteractionButtons then goto continue end
 
         local now = GetGameTimer()
 
@@ -135,10 +136,13 @@ end)
 RegisterNetEvent("interaction_lift:clearSupport", function()
     Wait(ANIM_DURATION)
     ClearPedTasks(PlayerPedId())
-    message("Support désactivé")
+    message("Support Cleared")
     FreezeEntityPosition(PlayerPedId(), false)
-    supporting = false
-    supportMode = nil
+    supporting = false -- a supprimer
+    supportMode = nil -- a supprimer
+    Support.active = false
+    Support.mode = nil
+    Support.RemoveProxy()
 end)
 
 RegisterNetEvent("interaction_lift:denied", function(reason)

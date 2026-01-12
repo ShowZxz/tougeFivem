@@ -208,3 +208,26 @@ RegisterCommand("break", function()
         print("Vous n'êtes pas dans un véhicule.")
     end
 end)
+
+-- Command to delete all ped proxies in areaSize radius around the player
+RegisterCommand("delprox", function(source, args, rawCommand)
+    local player = PlayerPedId()
+    local coords = GetEntityCoords(player)
+    local areaSize = tonumber(args[1]) or 10.0
+
+    local deletedCount = 0
+    for proxyId, proxyData in pairs(Support.Proxies) do
+        local proxyEntity = proxyData.entity
+        if DoesEntityExist(proxyEntity) then
+            local proxyCoords = GetEntityCoords(proxyEntity)
+            local dist = #(coords - proxyCoords)
+            if dist <= areaSize then
+                DeleteEntity(proxyEntity)
+                Support.Proxies[proxyId] = nil
+                deletedCount = deletedCount + 1
+            end
+        end
+    end
+
+    print("Supprimé " .. deletedCount .. " proxys dans un rayon de " .. areaSize .. " mètres.")
+end)

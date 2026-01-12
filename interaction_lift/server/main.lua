@@ -4,14 +4,13 @@ local COOLDOWN = 5000
 local MAX_LEGSUP_DISTANCE = 1.6
 local MAX_PULLUP_DISTANCE = 5.0
 
+SupportProxies = {}
+
 RegisterNetEvent("interaction_lift:setSupport", function(state, mode)
     supports[source] = state
 
-    if mode then
-        print(("interaction_lift: support state of %s set to %s | Resquested a %s"):format(source, tostring(state),
-            tostring(mode)))
-    end
-    print(("interaction_lift: support state of %s set to %s"):format(source, tostring(state)))
+    print(("interaction_lift: support state of %s set to %s | Resquested a %s"):format(source, tostring(state),
+        tostring(mode)))
 end)
 
 
@@ -130,4 +129,30 @@ RegisterNetEvent("interaction_lift:pullup", function(target)
 
     TriggerClientEvent("interaction_lift:clearSupport", src)
     TriggerClientEvent("interaction_lift:clearSupport", target)
+end)
+
+
+RegisterNetEvent("interaction_lift:registerProxy", function(netId, mode)
+    local src = source
+
+    SupportProxies[src] = {
+        netId = netId,
+        mode = mode
+    }
+
+    TriggerClientEvent("interaction_lift:proxyCreated", -1, src, netId, mode)
+end)
+
+
+RegisterNetEvent("interaction_lift:removeProxy", function(netId)
+    local src = source
+
+    if not SupportProxies[netId] then return end
+    if SupportProxies[netId].owner ~= src then return end
+
+    print("[interaction_lift] Suppression proxy netId :", netId)
+
+    SupportProxies[netId] = nil
+
+    TriggerClientEvent("interaction_lift:proxyRemoved", -1, netId)
 end)
