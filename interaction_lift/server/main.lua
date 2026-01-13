@@ -1,11 +1,12 @@
 local supports = {}
 local lastUse = {}
 local COOLDOWN = 5000
-local MAX_LEGSUP_DISTANCE = 1.6
-local MAX_PULLUP_DISTANCE = 5.0
+local MAX_LEGSUP_DISTANCE = 1.6 -- adjustable max distance to perform legsup -- Note : should be in sync with client config
+local MAX_PULLUP_DISTANCE = 5.0 -- adjustable max distance to perform pullup -- Note : should be in sync with client config
 
 SupportProxies = {}
 
+-- Support state handling
 RegisterNetEvent("interaction_lift:setSupport", function(state, mode)
     supports[source] = state
 
@@ -14,7 +15,7 @@ RegisterNetEvent("interaction_lift:setSupport", function(state, mode)
 end)
 
 
-
+-- Handle legsup interaction request
 RegisterNetEvent("interaction_lift:legsup", function(target)
     print("Legs Up requested for target server ID:", target)
     local src = source
@@ -73,6 +74,7 @@ RegisterNetEvent("interaction_lift:legsup", function(target)
     TriggerClientEvent("interaction_lift:clearSupport", target)
 end)
 
+-- Handle pullup interaction request
 RegisterNetEvent("interaction_lift:pullup", function(target)
     print("Pull Up requested for target server ID:", target)
     local src = source
@@ -131,7 +133,7 @@ RegisterNetEvent("interaction_lift:pullup", function(target)
     TriggerClientEvent("interaction_lift:clearSupport", target)
 end)
 
-
+-- Registering a proxy ped when created by another player and stock by the server
 RegisterNetEvent("interaction_lift:registerProxy", function(netId, mode)
     local src = source
 
@@ -143,7 +145,7 @@ RegisterNetEvent("interaction_lift:registerProxy", function(netId, mode)
     TriggerClientEvent("interaction_lift:proxyCreated", -1, src, netId, mode)
 end)
 
-
+-- Removing the proxy ped when requested by the owner player
 RegisterNetEvent("interaction_lift:removeProxy", function(netId)
     local src = source
 

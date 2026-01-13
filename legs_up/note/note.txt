@@ -5,16 +5,17 @@ A FAIRE :
 - Documentation
  
 Code :
-- proxyPed invisible
 - Ajouter le fix de applyforce
-- Support.lua a commenter 
-- Duplication de fonction a retirer
 - Config
 - Cleanup
 
 Finish :
 - Version standalone avec interact bouton -- 
 - VERSION ALT click ox_target--
+- Duplication de fonction a retirer--
+- Si le ped subit une action call removeProxy et trigger support disable--
+- proxyPed invisible--
+- Commenter le code--
 
 
 A L'AVENIR :

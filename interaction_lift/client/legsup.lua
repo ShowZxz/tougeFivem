@@ -2,7 +2,7 @@ Legsup = {}
 
 local BOOST_TIME = (Config.Frame.BOOST_FRAME / Config.Frame.ANIM_FPS) * 1000
 
-
+--Check if legsup can be used
 function Legsup.CanUse(ped, targetPed, dist)
     return dist <= Config.Distances.LEGSUP_MAX
         and isSupportStateValid(ped)
@@ -10,18 +10,19 @@ function Legsup.CanUse(ped, targetPed, dist)
         and not hasRoofAbove(ped, Config.Distances.MIN_ROOF_HEIGHT)
 end
 
+--Check if legsup can be used with target
 function Legsup.CanUseWithTarget(ped)
     return isSupportStateValid(ped)
         and not isNearWall(ped, Config.Distances.MIN_WALL_DISTANCE)
         and not hasRoofAbove(ped, Config.Distances.MIN_ROOF_HEIGHT)
 end
 
-
+--Start legsup interaction
 function Legsup.Start(targetServerId)
     TriggerServerEvent("interaction_lift:legsup", targetServerId)
 end
 
-
+--Check if ped near wall
 function isNearWall(ped, distance)
     local coords   = GetEntityCoords(ped)
     local forward  = GetEntityForwardVector(ped)
@@ -62,6 +63,7 @@ function getRayHit(ray)
     return hit == 1
 end
 
+--Check if the ray hit the roof above the ped
 function hasRoofAbove(ped, height)
     local coords = GetEntityCoords(ped)
     local z = coords.z + 0.5
@@ -75,42 +77,11 @@ function hasRoofAbove(ped, height)
     return getRayHit(ray)
 end
 
---
-function isSupportStateValid(ped)
-    return not (
-        IsPedInAnyVehicle(ped, true) or
-        IsPedFalling(ped) or
-        IsPedRagdoll(ped) or
-        IsPedSwimming(ped) or
-        IsPedClimbing(ped) or
-        IsPedInCombat(ped) or
-        IsPedShooting(ped) or
-        IsPedJumping(ped)
-
-
-    )
-end
-
---
-function message(msg)
-    BeginTextCommandThefeedPost('STRING')
-    AddTextComponentSubstringPlayerName(msg)
-    ThefeedSetNextPostBackgroundColor(184)
-    EndTextCommandThefeedPostTicker(false, true)
-end
-
---
-function errorMsg(msg)
-    BeginTextCommandThefeedPost('STRING')
-    AddTextComponentSubstringPlayerName(msg)
-    ThefeedSetNextPostBackgroundColor(6)
-    EndTextCommandThefeedPostTicker(true, true)
-end
-
+--Align legsup players
 function alignLegsupPlayers(supportPed, liftedPed)
     local supportCoords = GetEntityCoords(supportPed)
     local heading = GetEntityHeading(supportPed)
-    heading = heading + 180.0
+    heading = heading + 180.0 -- face the supporter
 
     local forward = GetEntityForwardVector(supportPed)
 
@@ -124,9 +95,7 @@ function alignLegsupPlayers(supportPed, liftedPed)
     FreezeEntityPosition(liftedPed, true)
 end
 
-
-
-
+-- Align legsup players
 RegisterNetEvent("legsup:align", function(supportServerId)
     local liftedPed = PlayerPedId()
     local supportPed = GetPlayerPed(GetPlayerFromServerId(supportServerId)) -- a test
@@ -134,24 +103,29 @@ RegisterNetEvent("legsup:align", function(supportServerId)
     alignLegsupPlayers(supportPed, liftedPed)
 end)
 
+-- Play legsup animations
 RegisterNetEvent("legsup:playBoost", function()
     local ped = PlayerPedId()
 
     RequestAnimDict(Config.Animation.LEGSUP.DICTLIFT)
     while not HasAnimDictLoaded(Config.Animation.LEGSUP.DICTLIFT) do Wait(10) end
 
-    TaskPlayAnim(ped, Config.Animation.LEGSUP.DICTLIFT, Config.Animation.LEGSUP.ANIMLIFT, 8.0, -8.0, -1, 0, 0, false, false, false)
+    TaskPlayAnim(ped, Config.Animation.LEGSUP.DICTLIFT, Config.Animation.LEGSUP.ANIMLIFT, 8.0, -8.0, -1, 0, 0, false,
+        false, false)
 end)
 
+-- Play legsup jump animation
 RegisterNetEvent("legsup:playJump", function()
     local ped = PlayerPedId()
 
     RequestAnimDict(Config.Animation.LEGSUP.DICTJUMP)
     while not HasAnimDictLoaded(Config.Animation.LEGSUP.DICTJUMP) do Wait(10) end
 
-    TaskPlayAnim(ped, Config.Animation.LEGSUP.DICTJUMP, Config.Animation.LEGSUP.ANIMJUMP, 8.0, -8.0, -1, 0, 0, false, false, false)
+    TaskPlayAnim(ped, Config.Animation.LEGSUP.DICTJUMP, Config.Animation.LEGSUP.ANIMJUMP, 8.0, -8.0, -1, 0, 0, false,
+        false, false)
 end)
 
+--Apply legsup force -- Need to be improve later
 RegisterNetEvent("legsup:applyForce", function()
     local ped = PlayerPedId()
 
@@ -199,10 +173,15 @@ RegisterNetEvent("legsup:applyForce", function()
     SetPedCanRagdoll(ped, true)
 end)
 
-
+-- Debug command to test legsup force application -- Need to be improve later --Here for testing 
 RegisterCommand("aforce", function()
-local MIN_WALL_DISTANCE = 2.0
-local MIN_ROOF_HEIGHT = 3.0
+    if not Config.debug then
+        errorMsg("❌ Commande désactivée")
+        return
+    end
+
+    local MIN_WALL_DISTANCE = 2.0
+    local MIN_ROOF_HEIGHT = 3.0
     local ped = PlayerPedId()
     if isNearWall(ped, MIN_WALL_DISTANCE) then
         errorMsg("❌ Trop proche d'un mur pour faire une courte échelle")
@@ -226,7 +205,7 @@ local MIN_ROOF_HEIGHT = 3.0
     SetPedCanRagdoll(ped, false)
 
     Wait(0)
-    
+
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
 
     ApplyForceToEntity(

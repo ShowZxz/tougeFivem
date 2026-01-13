@@ -1,12 +1,10 @@
 print("Loading interaction_lift client main.lua")
+
 local activeAction = nil
 local targetServerId = nil
 local supporting = false
 local supportMode = nil
-local lastSupportToggle = 0
 
-local cooldownEnd = 0
-local showCooldown = false
 
 local ANIM_DURATION = (Config.Frame.TOTAL_FRAMES / Config.Frame.ANIM_FPS) * 1000
 
@@ -15,19 +13,6 @@ local lastUse = {
     pullup = 0
 }
 
-function DrawHudText(text, x, y)
-    SetTextFont(0)
-    SetTextProportional(1)
-    SetTextScale(0.35, 0.35)
-    SetTextColour(255, 255, 255, 255)
-    SetTextCentre(true)
-    SetTextDropshadow(0, 0, 0, 0, 255)
-    SetTextEdge(1, 0, 0, 0, 255)
-
-    BeginTextCommandDisplayText("STRING")
-    AddTextComponentSubstringPlayerName(text)
-    EndTextCommandDisplayText(x, y)
-end
 
 --- Action detection
 CreateThread(function()
@@ -59,7 +44,7 @@ CreateThread(function()
     end
 end)
 
--- Interaction handling
+-- Interaction handling by key press
 CreateThread(function()
     while true do
         Wait(0)
@@ -96,7 +81,7 @@ end)
 CreateThread(function()
     while true do
         Wait(0)
-
+        -- disable control if ox_target is used
         if Config.EnableOxTargetIntegration then goto continue end
         if IsControlJustPressed(0, Config.Keys.LEGSUP_SUPPORT) then
             TriggerEvent("interaction_lift:support:enable", "legsup")
@@ -113,48 +98,31 @@ CreateThread(function()
     end
 end)
 
--- Cooldown display
-CreateThread(function()
-    while true do
-        Wait(0)
-
-        if not showCooldown then goto continue end
-
-        local now = GetGameTimer()
-        local remaining = (cooldownEnd - now) / 1000
-
-        if remaining <= 0 then
-            showCooldown = false
-            goto continue
-        end
-
-        DrawHudText(("Support disponible dans ~y~%.1fs"):format(remaining), 0.5, 0.88)
-
-        ::continue::
-    end
-end)
-
+-- Clear support after being lifted and the end of the animation
 RegisterNetEvent("interaction_lift:clearSupport", function()
     Wait(ANIM_DURATION)
     ClearPedTasks(PlayerPedId())
     message("Support Cleared")
     FreezeEntityPosition(PlayerPedId(), false)
-    supporting = false -- a supprimer
-    supportMode = nil  -- a supprimer
+    supporting = false -- only use in debug command
+    supportMode = nil  -- only use in debug command
     Support.active = false
     Support.mode = nil
     Support.RemoveProxy()
 end)
 
+-- Information about denial reason
 RegisterNetEvent("interaction_lift:denied", function(reason)
     errorMsg(reason)
 end)
 
---Unused for now
+-- Information about successful interaction
 RegisterNetEvent("interaction_lift:info", function(info)
     message(info)
 end)
 
+
+--DEBUG COMMANDS
 RegisterCommand("pullup", function()
     if not Config.debug then
         errorMsg("❌ Commande désactivée")
@@ -193,6 +161,7 @@ RegisterCommand("pullup", function()
     end
 end)
 
+--DEBUG COMMANDS
 RegisterCommand("legsup", function()
     if not Config.debug then
         errorMsg("❌ Commande désactivée")
@@ -238,7 +207,13 @@ RegisterCommand("legsup", function()
     end
 end)
 
+--DEBUG COMMANDS
 RegisterCommand("testc", function()
+    if not Config.debug then
+        errorMsg("❌ Commande désactivée")
+        return
+    end
+
     RequestAnimDict(Config.Animation.LEGSUP.DICTLIFT)
     while not HasAnimDictLoaded(Config.Animation.LEGSUP.DICTLIFT) do Wait(10) end
     TaskPlayAnim(PlayerPedId(), Config.Animation.LEGSUP.DICTLIFT, Config.Animation.LEGSUP.ANIMLIFT, 8.0, -8.0, -1, 1, 0,

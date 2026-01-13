@@ -7,7 +7,7 @@ Support = {
     netId = nil
 }
 
-
+-- Cooldown management for support toggling
 function Support.CanToggle()
     local now = GetGameTimer()
     local elapsed = now - Support.lastToggle
@@ -23,18 +23,17 @@ function Support.CanToggle()
     return true, 0
 end
 
+-- Get support status
 function Support.IsActive()
     return Support.active, Support.mode
 end
 
-function Support.CanSupport()
-   
-end
-
+-- Removing the proxy ped
 function Support.RemoveProxy()
+    if not Config.EnableOxTargetIntegration then return end
 
     print("[interaction_lift] Suppression du proxy ped")
-
+    if not Support.proxy then return end
     if Support.proxy and DoesEntityExist(Support.proxy) then
         DeleteEntity(Support.proxy)
     end
@@ -46,7 +45,9 @@ function Support.RemoveProxy()
 
 end
 
+-- Creating the proxy ped for ox_target
 function Support.CreateProxy(mode)
+    if not Config.EnableOxTargetIntegration then return end
 
     print("[interaction_lift] Création du proxy ped en mode :", mode)
     local ped = PlayerPedId()
@@ -82,8 +83,20 @@ function Support.CreateProxy(mode)
     TriggerServerEvent("interaction_lift:registerProxy", netId, mode)
 end
 
+-- Force disable support mode if the get hit/ragdoll/tazed/death/killed -- Note : call this if a miss a RP event
+function Support.ForceDisable(reason)
+    if not Support.active then return end
+
+    print("[interaction_lift] Support forcé OFF :", reason)
+
+    TriggerEvent("interaction_lift:support:disable")
+    if not Config.EnableOxTargetIntegration then return end
+
+    TriggerServerEvent("interaction_lift:removeProxy")
+end
 
 
+-- Enable support mode
 RegisterNetEvent("interaction_lift:support:enable", function(mode)
     local ped = PlayerPedId()
 
@@ -153,6 +166,7 @@ RegisterNetEvent("interaction_lift:support:enable", function(mode)
     message(("Support %s activé"):format(mode))
 end)
 
+--Disable support mode
 RegisterNetEvent("interaction_lift:support:disable", function()
     if not Support.active then return end
 
@@ -176,9 +190,14 @@ AddEventHandler("onResourceStop", function(res)
 end)
 
 AddEventHandler("baseevents:onPlayerDied", function()
-    Support.RemoveProxy()
+    Support.ForceDisable("death")
 end)
 
+AddEventHandler("baseevents:onPlayerKilled", function()
+    Support.ForceDisable("killed")
+end)
+
+-- If a player disconnects or crash, remove their proxy ped
 AddEventHandler("playerDropped", function()
     for netId, data in pairs(SupportProxies) do
         if data.owner == source then
@@ -188,6 +207,7 @@ AddEventHandler("playerDropped", function()
     end
 end)
 
+-- Display support cooldown on HUD
 CreateThread(function()
     while true do
         Wait(0)
@@ -213,3 +233,49 @@ CreateThread(function()
     end
 end)
 
+-- Force disable support on damage
+CreateThread(function()
+    local ped = PlayerPedId()
+    local lastHealth = GetEntityHealth(ped)
+
+    while true do
+        Wait(200)
+
+        if not Support.active then
+            lastHealth = GetEntityHealth(ped)
+            goto continue
+        end
+
+        local currentHealth = GetEntityHealth(ped)
+
+        if currentHealth < lastHealth then
+            Support.ForceDisable("damage")
+        end
+
+        lastHealth = currentHealth
+
+        ::continue::
+    end
+end)
+
+--Force disable support mode if tazed
+CreateThread(function()
+    while true do
+        Wait(100)
+
+        if Support.active and IsPedBeingStunned(PlayerPedId()) then
+            Support.ForceDisable("tazed")
+        end
+    end
+end)
+
+-- Force disable support mode if ragdoll
+CreateThread(function()
+    while true do
+        Wait(150)
+
+        if Support.active and IsPedRagdoll(PlayerPedId()) then
+            Support.ForceDisable("ragdoll")
+        end
+    end
+end)

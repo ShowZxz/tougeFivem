@@ -1,5 +1,6 @@
 Support.Proxies = {}
 
+-- Registering a proxy ped when created by another player and validated by the server
 RegisterNetEvent("interaction_lift:proxyCreated", function(owner, netId, mode)
     print("[interaction_lift] Proxy reçu :", owner, netId, mode)
 
@@ -33,6 +34,8 @@ RegisterNetEvent("interaction_lift:proxyCreated", function(owner, netId, mode)
     end)
 end)
 
+
+-- Removing the proxy ped when notified by the server
 RegisterNetEvent("interaction_lift:proxyRemoved", function(netId)
     local data = Support.Proxies[netId]
     if not data then return end
@@ -51,16 +54,16 @@ end)
 
 
 
-
+-- Configure the proxy ped for support mode / like set it invisible, attached to player
 function configureProxy(proxy)
     local ped = PlayerPedId()
 
     SetEntityInvincible(proxy, true)
-    SetEntityCollision(proxy, true, true)
+    SetEntityCollision(proxy, false, false)
     FreezeEntityPosition(proxy, true)
     SetBlockingOfNonTemporaryEvents(proxy, true)
 
-    SetEntityVisible(proxy, true, true)
+    SetEntityVisible(proxy, false, false)
     SetPedCanRagdoll(proxy, false)
 
 

@@ -2,53 +2,28 @@ PullUp = {}
 
 local BOOST_TIME = (Config.Frame.BOOST_FRAME / Config.Frame.ANIM_FPS) * 1000
 
+-- Check if pullup can be used
 function PullUp.CanUse(ped, targetPed, dist)
     return dist >= Config.Distances.PULLUP_MIN
         and dist <= Config.Distances.PULLUP_MAX
         and isSupportStateValid(ped)
 end
 
+-- Check if pullup can be used with target
 function PullUp.CanUseWithTarget(ped)
     return isSupportStateValid(ped)
 
         
 end
 
+-- Start pullup interaction
 function PullUp.Start(targetServerId)
     TriggerServerEvent("interaction_lift:pullup", targetServerId)
 end
 
 
---
-function message(msg)
-    BeginTextCommandThefeedPost('STRING')
-    AddTextComponentSubstringPlayerName(msg)
-    ThefeedSetNextPostBackgroundColor(184)
-    EndTextCommandThefeedPostTicker(false, true)
-end
---
-function errorMsg(msg)
-    BeginTextCommandThefeedPost('STRING')
-    AddTextComponentSubstringPlayerName(msg)
-    ThefeedSetNextPostBackgroundColor(6)
-    EndTextCommandThefeedPostTicker(true, true)
-end
---
-function isSupportStateValid(ped)
-    return not (
-        IsPedInAnyVehicle(ped, true) or
-        IsPedFalling(ped) or
-        IsPedRagdoll(ped) or
-        IsPedSwimming(ped) or
-        IsPedClimbing(ped) or
-        IsPedInCombat(ped) or
-        IsPedShooting(ped) or
-        IsPedJumping(ped)
 
-
-    )
-end
-
+-- Align support and lifted players for pullup interaction
 function alignPullupPlayers(supportPed, liftedPed)
     local supportCoords = GetEntityCoords(supportPed)
     local liftedCoords  = GetEntityCoords(liftedPed)
@@ -76,11 +51,12 @@ function alignPullupPlayers(supportPed, liftedPed)
     FreezeEntityPosition(liftedPed, true)
 end
 
-
+-- Get right vector from forward vector
 function GetRightVectorFromForward(forward)
     return vector3(-forward.y, forward.x, 0.0)
 end
 
+-- Get wall normal between two coordinates
 function getWallNormal(fromCoords, toCoords, ped)
     local ray = StartShapeTestRay(
         fromCoords.x, fromCoords.y, fromCoords.z + 0.3,
@@ -93,7 +69,7 @@ function getWallNormal(fromCoords, toCoords, ped)
 end
 
 
-
+-- Align pulled up players
 RegisterNetEvent("pullup:align", function(supportServerId)
     local liftedPed = PlayerPedId()
     local supportPed = GetPlayerPed(GetPlayerFromServerId(supportServerId))
@@ -102,6 +78,7 @@ RegisterNetEvent("pullup:align", function(supportServerId)
 
 end)
 
+-- Play pullup boost animation
 RegisterNetEvent("pullup:playUpBoost", function()
     local ped = PlayerPedId()
     --Animation de boost
@@ -110,6 +87,7 @@ RegisterNetEvent("pullup:playUpBoost", function()
     TaskPlayAnim(ped, Config.Animation.PULLUP.DICTLIFT, Config.Animation.PULLUP.ANIMLIFT, 8.0, -8.0, BOOST_TIME, 2, 0, false, false, false)
 end)
 
+-- Play pullup jump animation
 RegisterNetEvent("pullup:playJump", function()
     local ped = PlayerPedId()
     --Animation de saut
@@ -118,6 +96,7 @@ RegisterNetEvent("pullup:playJump", function()
     TaskPlayAnim(ped, Config.Animation.PULLUP.DICTJUMP, Config.Animation.PULLUP.ANIMJUMP, 8.0, -8.0, BOOST_TIME, 2, 0, false, false, false)
 end)
 
+-- Pulling up the player -- Note : maybe add a space check to avoid pulling through walls
 RegisterNetEvent("pullup:pullingUp", function(supportServerId)
  
     local ped = PlayerPedId()
