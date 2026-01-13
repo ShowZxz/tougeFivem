@@ -10,6 +10,12 @@ function Legsup.CanUse(ped, targetPed, dist)
         and not hasRoofAbove(ped, Config.Distances.MIN_ROOF_HEIGHT)
 end
 
+function Legsup.CanUseWithTarget(ped)
+    return isSupportStateValid(ped)
+        and not isNearWall(ped, Config.Distances.MIN_WALL_DISTANCE)
+        and not hasRoofAbove(ped, Config.Distances.MIN_ROOF_HEIGHT)
+end
+
 
 function Legsup.Start(targetServerId)
     TriggerServerEvent("interaction_lift:legsup", targetServerId)
@@ -69,6 +75,7 @@ function hasRoofAbove(ped, height)
     return getRayHit(ray)
 end
 
+--
 function isSupportStateValid(ped)
     return not (
         IsPedInAnyVehicle(ped, true) or
@@ -84,6 +91,7 @@ function isSupportStateValid(ped)
     )
 end
 
+--
 function message(msg)
     BeginTextCommandThefeedPost('STRING')
     AddTextComponentSubstringPlayerName(msg)
@@ -91,6 +99,7 @@ function message(msg)
     EndTextCommandThefeedPostTicker(false, true)
 end
 
+--
 function errorMsg(msg)
     BeginTextCommandThefeedPost('STRING')
     AddTextComponentSubstringPlayerName(msg)

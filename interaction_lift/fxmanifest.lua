@@ -1,6 +1,10 @@
 fx_version 'cerulean'
 game 'gta5'
 
+author 'ShowZx'
+description 'description here'
+version '0.9'
+
 client_script { 'client/config.lua', 
 'client/pullup.lua', 
 'client/legsup.lua',

@@ -49,7 +49,6 @@ CreateThread(function()
                     activeAction = "legsup"
                     targetServerId = GetPlayerServerId(player)
                     break
-
                 elseif PullUp.CanUse(ped, targetPed, dist) then
                     activeAction = "pullup"
                     targetServerId = GetPlayerServerId(player)
@@ -64,14 +63,14 @@ end)
 CreateThread(function()
     while true do
         Wait(0)
-        
+
         if not activeAction then goto continue end
         if not IsControlJustPressed(0, Config.Keys.INTERACT) then goto continue end
         if not Config.EnableInteractionButtons then goto continue end
 
         local now = GetGameTimer()
 
-        
+
         local cd = Config.Cooldowns.INTERACTION[activeAction:upper()]
         local last = lastUse[activeAction]
 
@@ -82,8 +81,8 @@ CreateThread(function()
         end
 
         lastUse[activeAction] = now
-        
-        if activeAction == "legsup" then   
+
+        if activeAction == "legsup" then
             Legsup.Start(targetServerId)
         elseif activeAction == "pullup" then
             PullUp.Start(targetServerId)
@@ -98,6 +97,7 @@ CreateThread(function()
     while true do
         Wait(0)
 
+        if Config.EnableOxTargetIntegration then goto continue end
         if IsControlJustPressed(0, Config.Keys.LEGSUP_SUPPORT) then
             TriggerEvent("interaction_lift:support:enable", "legsup")
         end
@@ -106,6 +106,7 @@ CreateThread(function()
             TriggerEvent("interaction_lift:support:enable", "pullup")
         end
 
+        ::continue::
         if IsControlJustPressed(0, Config.Keys.TOGGLE_SUPPORT) then
             TriggerEvent("interaction_lift:support:disable")
         end
@@ -139,7 +140,7 @@ RegisterNetEvent("interaction_lift:clearSupport", function()
     message("Support Cleared")
     FreezeEntityPosition(PlayerPedId(), false)
     supporting = false -- a supprimer
-    supportMode = nil -- a supprimer
+    supportMode = nil  -- a supprimer
     Support.active = false
     Support.mode = nil
     Support.RemoveProxy()
@@ -181,7 +182,8 @@ RegisterCommand("pullup", function()
         RequestAnimDict(Config.Animation.PULLUP.DICTIDLE)
         while not HasAnimDictLoaded(Config.Animation.PULLUP.DICTIDLE) do Wait(10) end
 
-        TaskPlayAnim(PlayerPedId(), Config.Animation.PULLUP.DICTIDLE, Config.Animation.PULLUP.ANIMIDLE, 8.0, -8.0, -1, 1, 0, false, false, false)
+        TaskPlayAnim(PlayerPedId(), Config.Animation.PULLUP.DICTIDLE, Config.Animation.PULLUP.ANIMIDLE, 8.0, -8.0, -1, 1,
+            0, false, false, false)
         TriggerServerEvent("interaction_lift:setSupport", true)
         message("Vous êtes prêt à hisser un joueur.")
     else
@@ -192,11 +194,11 @@ RegisterCommand("pullup", function()
 end)
 
 RegisterCommand("legsup", function()
-      if not Config.debug then
+    if not Config.debug then
         errorMsg("❌ Commande désactivée")
         return
     end
-    
+
     local ped = PlayerPedId()
 
     if supporting and supportMode ~= "legsup" then
@@ -225,7 +227,8 @@ RegisterCommand("legsup", function()
         RequestAnimDict(Config.Animation.LEGSUP.DICTIDLE)
         while not HasAnimDictLoaded(Config.Animation.LEGSUP.DICTIDLE) do Wait(10) end
 
-        TaskPlayAnim(PlayerPedId(), Config.Animation.LEGSUP.DICTIDLE, Config.Animation.LEGSUP.ANIMIDLE, 8.0, -8.0, -1, 1, 0, false, false, false)
+        TaskPlayAnim(PlayerPedId(), Config.Animation.LEGSUP.DICTIDLE, Config.Animation.LEGSUP.ANIMIDLE, 8.0, -8.0, -1, 1,
+            0, false, false, false)
         TriggerServerEvent("interaction_lift:setSupport", true)
         message("Vous êtes prêt à soutenir un joueur.")
     else
@@ -238,7 +241,6 @@ end)
 RegisterCommand("testc", function()
     RequestAnimDict(Config.Animation.LEGSUP.DICTLIFT)
     while not HasAnimDictLoaded(Config.Animation.LEGSUP.DICTLIFT) do Wait(10) end
-    TaskPlayAnim(PlayerPedId(), Config.Animation.LEGSUP.DICTLIFT, Config.Animation.LEGSUP.ANIMLIFT, 8.0, -8.0, -1, 1, 0, false, false, false)
+    TaskPlayAnim(PlayerPedId(), Config.Animation.LEGSUP.DICTLIFT, Config.Animation.LEGSUP.ANIMLIFT, 8.0, -8.0, -1, 1, 0,
+        false, false, false)
 end)
-
- 

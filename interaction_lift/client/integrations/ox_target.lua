@@ -6,33 +6,66 @@ CreateThread(function()
 
 
     exports.ox_target:addGlobalOption({
-        {
-            name = "interaction_lift_target",
-            icon = "person-arrow-up-from-line", --trouver une icône appropriée
-            label = "Se mettre en Legs Up",
+         {
+            name = "interaction_lift_target_disable_support",
+            icon = "fa-solid fa-caret-right",
+            label = "❌ Desactivated Support Mode",
             distance = 0,
+            
 
             canInteract = function()
+                if Support.active and Support.mode == "legsup" or Support.mode == "pullup" then
+                    return true
+                end
 
+                return false
 
             end,
 
-            onSelect = function(data)
+            onSelect = function()
+                TriggerEvent("interaction_lift:support:disable")
+
+            end
+        },
+        {
+            name = "interaction_lift_target_legsup",
+            icon = "fa-solid fa-caret-right",
+            label = "🦵 Legs Up Mode",
+            distance = 0,
+            
+
+            canInteract = function()
+                if Legsup.CanUseWithTarget(PlayerPedId()) and not Support.active and Support.mode ~= "legsup" then
+                    return true
+                end
+
+                return false
+
+            end,
+
+            onSelect = function()
+                TriggerEvent("interaction_lift:support:enable", "legsup")
 
             end
         },
 
                 {
-            name = "interaction_lift_target",
-            icon = "person-arrow-up-from-line", --trouver une icône appropriée
-            label = "Se mettre en Pull Up",
+            name = "interaction_lift_target_pullup",
+            icon = "fa-solid fa-caret-right",
+            label = "🧗 Pull Up Mode",
             distance = 0,
 
-            canInteract = function(entity)
+            canInteract = function()
+                if PullUp.CanUseWithTarget(PlayerPedId()) and not Support.active and Support.mode ~= "pullup" then
+                    return true
+                end 
+
+                return false
 
             end,
 
-            onSelect = function(data)
+            onSelect = function()
+                TriggerEvent("interaction_lift:support:enable", "pullup")
 
             end
         },

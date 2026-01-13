@@ -5,7 +5,13 @@ local BOOST_TIME = (Config.Frame.BOOST_FRAME / Config.Frame.ANIM_FPS) * 1000
 function PullUp.CanUse(ped, targetPed, dist)
     return dist >= Config.Distances.PULLUP_MIN
         and dist <= Config.Distances.PULLUP_MAX
-        and isSupportStateValid(targetPed)
+        and isSupportStateValid(ped)
+end
+
+function PullUp.CanUseWithTarget(ped)
+    return isSupportStateValid(ped)
+
+        
 end
 
 function PullUp.Start(targetServerId)
@@ -13,21 +19,21 @@ function PullUp.Start(targetServerId)
 end
 
 
-
+--
 function message(msg)
     BeginTextCommandThefeedPost('STRING')
     AddTextComponentSubstringPlayerName(msg)
     ThefeedSetNextPostBackgroundColor(184)
     EndTextCommandThefeedPostTicker(false, true)
 end
-
+--
 function errorMsg(msg)
     BeginTextCommandThefeedPost('STRING')
     AddTextComponentSubstringPlayerName(msg)
     ThefeedSetNextPostBackgroundColor(6)
     EndTextCommandThefeedPostTicker(true, true)
 end
-
+--
 function isSupportStateValid(ped)
     return not (
         IsPedInAnyVehicle(ped, true) or

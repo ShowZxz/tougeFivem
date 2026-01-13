@@ -1,25 +1,23 @@
-différentes puissances selon course ?
-
-
-
-régles:
-- pas trop proche d'un mur [legsup] --
-- vérifié si il y a pas de toit distance minimal a établir si jamais y'a un toit [legsup] --
-
-
 A FAIRE :
-
 - Refaire les animations
-- Cooldown pour les registercommands A VOIR
-- distance 1m du mur pour pulling up / DANS UN AUTRE REALASE
-- Version standalone avec interact bouton -- 
-- Duplication de fonction a retirer
-- Freeze entity a retirer a cause du altclick
 - qb_target a test
-- Support.lua a commenter  
+- Read me
+- Documentation
+ 
+Code :
+- proxyPed invisible
 - Ajouter le fix de applyforce
-- VERSION ALT click
-- VERSION ESX
+- Support.lua a commenter 
+- Duplication de fonction a retirer
+- Config
+- Cleanup
+
+Finish :
+- Version standalone avec interact bouton -- 
+- VERSION ALT click ox_target--
 
 
+A L'AVENIR :
+- distance 1m du mur pour pulling up / DANS UN AUTRE REALASE
+- Cooldown pour les registercommands A VOIR
 
