@@ -1,7 +1,6 @@
 A FAIRE :
 - Refaire les animations
 - qb_target a test
-- ContextMenu de flashback WL
 - Read me
 - Documentation
  
@@ -17,6 +16,7 @@ Finish :
 - Si le ped subit une action call removeProxy et trigger support disable--
 - proxyPed invisible--
 - Commenter le code--
+- ContextMenu de flashback WL--
 
 
 A L'AVENIR :

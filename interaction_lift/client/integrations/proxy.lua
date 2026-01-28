@@ -30,7 +30,9 @@ RegisterNetEvent("interaction_lift:proxyCreated", function(owner, netId, mode)
 
         print("✅ Proxy prêt :", entity)
 
-        registerProxyTarget(entity, netId)
+        if Config.EnableOxIntegration then
+            registerProxyTarget(entity, netId)
+        end
     end)
 end)
 

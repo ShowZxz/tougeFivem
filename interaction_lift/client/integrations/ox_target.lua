@@ -1,7 +1,7 @@
 CreateThread(function()
 
     -- Check if ox_target is available if not disable the integration 
-    if not GetResourceState("ox_target"):find("start") then Config.EnableOxTargetIntegration = false return end
+    if not GetResourceState("ox_target"):find("start") then return end
 
     print("[interaction_lift] ox_target detected")
 
@@ -78,6 +78,7 @@ end)
 
 -- Register the proxy ped entity with ox_target
 function registerProxyTarget(entity, netId)
+    if not Config.EnableOxIntegration then return end
     exports.ox_target:addLocalEntity(entity, {
         {
             name = "interaction_lift_legsup",

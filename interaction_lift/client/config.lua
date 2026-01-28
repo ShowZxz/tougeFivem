@@ -97,4 +97,5 @@ Config.debug = true
 -- Set to true to disable the interaction buttons and use only Alt+Click interactions ESX / QBcore style
 Config.DisableInteractionButtons = false
 
-Config.EnableOxTargetIntegration = true
+Config.EnableOxIntegration = nil  -- Enable integration with interaction proxy resource ox_target
+Config.EnableContextMenuIntegration = nil

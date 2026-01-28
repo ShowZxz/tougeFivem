@@ -1,7 +1,9 @@
-
-if not exports["ContextMenu"] then
+if not GetResourceState("ContextMenu"):find("start") then
+    Config.EnableContextMenuIntegration = false
     return
 end
+
+Config.EnableContextMenuIntegration = true
 
 print("shx_menu integration loaded")
 -- save exports in a variable for easy access
@@ -43,25 +45,30 @@ ECM:Register(function(screenPosition, hitSomething, worldPosition, hitEntity, no
         return
     end
 
-    local targetPed = hitEntity
-    local ped       = PlayerPedId()
-    local dist      = #(GetEntityCoords(ped) - GetEntityCoords(targetPed))
+    local netId = NetworkGetNetworkIdFromEntity(hitEntity)
 
-    local targetMenu  = ECM:AddSubmenu(0, "Target Support Menu")
+    local proxy = Support.Proxies[netId]
+    if not proxy then return end
 
-    if Legsup.CanUse(ped, targetPed, dist) then
+    local targetProxyPed = hitEntity
+    local ped            = PlayerPedId()
+    local dist           = #(GetEntityCoords(ped) - GetEntityCoords(targetProxyPed))
+
+    local targetMenu     = ECM:AddSubmenu(0, "🎯  Target Support Menu")
+
+    if Legsup.CanUse(ped, targetProxyPed, dist) then
         ECM:AddItem(targetMenu, "🦵 Monter (courte échelle)", function()
-            local targetServerId = GetPlayerServerId(NetworkGetPlayerIndexFromPed(targetPed)) -- a voir si ca marche bien
-            --print("[interaction_lift] Triggering legsup for target ped:", targetPed)
-            TriggerServerEvent("interaction_lift:legsup", targetServerId)
+            if proxy.mode == "legsup" then
+                Legsup.Start(proxy.owner)
+            end
         end)
     end
 
-    if PullUp.CanUse(ped, targetPed, dist) then
+    if PullUp.CanUse(ped, targetProxyPed, dist) then
         ECM:AddItem(targetMenu, "🧗 Se faire hisser", function()
-            local targetServerId = GetPlayerServerId(NetworkGetPlayerIndexFromPed(targetPed)) -- a voir si ca marche bien
-            TriggerServerEvent("interaction_lift:pullup", targetServerId)
+            if proxy.mode == "pullup" then
+                PullUp.Start(proxy.owner)
+            end
         end)
     end
-
-    end)
+end)

@@ -30,7 +30,7 @@ end
 
 -- Removing the proxy ped
 function Support.RemoveProxy()
-    if not Config.EnableOxTargetIntegration then return end
+    if not Config.EnableOxIntegration and not Config.EnableContextMenuIntegration then return end
 
     print("[interaction_lift] Suppression du proxy ped")
     if not Support.proxy then return end
@@ -47,7 +47,8 @@ end
 
 -- Creating the proxy ped for ox_target
 function Support.CreateProxy(mode)
-    if not Config.EnableOxTargetIntegration then return end
+    --print("Config EnableOxIntegration:", Config.EnableContextMenuIntegration)
+    if not Config.EnableOxIntegration and not Config.EnableContextMenuIntegration  then return end
 
     print("[interaction_lift] Création du proxy ped en mode :", mode)
     local ped = PlayerPedId()
@@ -78,7 +79,6 @@ function Support.CreateProxy(mode)
     Support.active = true
 
     configureProxy(proxy)
-    --AttachEntityToEntity(proxy, ped, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, true, false, 2, true)
 
     TriggerServerEvent("interaction_lift:registerProxy", netId, mode)
 end
@@ -90,7 +90,7 @@ function Support.ForceDisable(reason)
     print("[interaction_lift] Support forcé OFF :", reason)
 
     TriggerEvent("interaction_lift:support:disable")
-    if not Config.EnableOxTargetIntegration then return end
+    if not Config.EnableOxIntegration then return end
 
     TriggerServerEvent("interaction_lift:removeProxy")
 end
@@ -144,7 +144,7 @@ RegisterNetEvent("interaction_lift:support:enable", function(mode)
     Support.mode = mode
     Support.CreateProxy(mode)
 
-    --FreezeEntityPosition(ped, true)
+    FreezeEntityPosition(ped, true)
 
     local anim = Config.Animation[mode:upper()]
     RequestAnimDict(anim.DICTIDLE)
@@ -161,7 +161,7 @@ RegisterNetEvent("interaction_lift:support:enable", function(mode)
     )
 
     TriggerServerEvent("interaction_lift:setSupport", true, mode)
-    TriggerServerEvent("interaction_lift:createProxy", Support.mode)
+    --TriggerServerEvent("interaction_lift:createProxy", Support.mode)
 
     message(("Support %s activé"):format(mode))
 end)
