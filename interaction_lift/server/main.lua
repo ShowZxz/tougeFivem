@@ -158,3 +158,13 @@ RegisterNetEvent("interaction_lift:removeProxy", function(netId)
 
     TriggerClientEvent("interaction_lift:proxyRemoved", -1, netId)
 end)
+
+-- If a player disconnects or crash, remove their proxy ped
+AddEventHandler("playerDropped", function()
+    for netId, data in pairs(SupportProxies) do
+        if data.owner == source then
+            TriggerClientEvent("interaction_lift:proxyRemoved", -1, netId)
+            SupportProxies[netId] = nil
+        end
+    end
+end)

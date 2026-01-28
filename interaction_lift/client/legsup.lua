@@ -129,37 +129,24 @@ end)
 RegisterNetEvent("legsup:applyForce", function()
     local ped = PlayerPedId()
 
-
+    FreezeEntityPosition(ped, false)
     local coords = GetEntityCoords(ped)
-    SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z + 0.35, true, false, false)
-    SetPedCanRagdoll(ped, false)
-    SetEntityVelocity(ped, 0.0, 0.0, 0.0)
 
     Wait(BOOST_TIME)
     ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.05) -- retirer maybe
-    FreezeEntityPosition(ped, false)
-    ApplyForceToEntity(
-        ped,
-        3,
-        0.0, 0.0, Config.Arc.ARC_UP_FORCE,
-        0.0, 0.0, 0.0,
-        0,
-        true,
-        true,
-        true,
-        false,
-        true
-    )
+    SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z + 0.15, false, false, false)
+    SetPedCanRagdoll(ped, false)
 
+    Wait(0)
 
+    SetEntityVelocity(ped, 0.0, 0.0, 0.0)
+    local isClimbing = true
 
-    Wait(150)
-    ClearPedTasks(ped)
     for i = 1, Config.Arc.ARC_STEPS do
         ApplyForceToEntity(
             ped,
             3,
-            0.0, Config.Arc.ARC_FORWARD_FORCE, 0.0,
+            0.0, 0.0, Config.Arc.ARC_UP_FORCE, -- X positif = propulsion en hauteur
             0.0, 0.0, 0.0,
             0,
             true,
@@ -170,10 +157,36 @@ RegisterNetEvent("legsup:applyForce", function()
         )
         Wait(Config.Arc.ARC_STEP_TIME)
     end
+    Wait(250)
+    for i = 1, Config.Arc.ARC_STEPS do
+        ApplyForceToEntity(
+            ped,
+            3,
+            0.0, Config.Arc.ARC_FORWARD_FORCE, 0.0, -- Y positif = propulsion en avant
+            0.0, 0.0, 0.0,
+            0,
+            true,
+            true,
+            true,
+            false,
+            true
+        )
+        Wait(Config.Arc.ARC_STEP_TIME)
+    end
+    CreateThread(function()
+        while isClimbing do
+            DisableControlAction(0, 32, true)
+            DisableControlAction(0, 33, true)
+            DisableControlAction(0, 34, true)
+            DisableControlAction(0, 35, true)
+            Wait(0)
+        end
+    end)
+
     SetPedCanRagdoll(ped, true)
 end)
 
--- Debug command to test legsup force application -- Need to be improve later --Here for testing 
+-- Debug command to test legsup force application -- Need to be improve later --Here for testing
 RegisterCommand("aforce", function()
     if not Config.debug then
         errorMsg("❌ Commande désactivée")

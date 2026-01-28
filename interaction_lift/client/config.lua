@@ -13,7 +13,7 @@ Config.Distances = {
     LEGSUP_MAX = 1.5,
     PULLUP_MIN = 3.0,
     PULLUP_MAX = 5.0,
-    MIN_WALL_DISTANCE = 2.0,
+    MIN_WALL_DISTANCE = 1.5,
     MIN_ROOF_HEIGHT = 3.0
 }
 
@@ -65,8 +65,8 @@ Config.Frame = {
 
 -- Arc parameters for the legsup interaction
 Config.Arc = {
-    ARC_UP_FORCE = 10.0, -- Initial upward force
-    ARC_FORWARD_FORCE = 3.0, -- Forward force applied at each step
+    ARC_UP_FORCE = 4.2, -- Initial upward force
+    ARC_FORWARD_FORCE = 4.2, -- Forward force applied at each step
     ARC_STEP_TIME = 40, -- Time (in ms) between each arc step
     ARC_STEPS = 6 -- How many time do we applied ARC_FORWARD_FORCE
 }

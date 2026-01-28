@@ -5,8 +5,8 @@ A FAIRE :
 - Documentation
  
 Code :
-- Ajouter le fix de applyforce
 - Config
+- Crash event handler a test
 - Cleanup
 
 Finish :
@@ -17,6 +17,7 @@ Finish :
 - proxyPed invisible--
 - Commenter le code--
 - ContextMenu de flashback WL--
+- Ajouter le fix de applyforce--
 
 
 A L'AVENIR :

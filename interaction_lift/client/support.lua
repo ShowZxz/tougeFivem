@@ -90,7 +90,7 @@ function Support.ForceDisable(reason)
     print("[interaction_lift] Support forcé OFF :", reason)
 
     TriggerEvent("interaction_lift:support:disable")
-    if not Config.EnableOxIntegration then return end
+    if not Config.EnableOxIntegration and not Config.EnableContextMenuIntegration then return end
 
     TriggerServerEvent("interaction_lift:removeProxy")
 end
@@ -197,15 +197,6 @@ AddEventHandler("baseevents:onPlayerKilled", function()
     Support.ForceDisable("killed")
 end)
 
--- If a player disconnects or crash, remove their proxy ped
-AddEventHandler("playerDropped", function()
-    for netId, data in pairs(SupportProxies) do
-        if data.owner == source then
-            TriggerClientEvent("interaction_lift:proxyRemoved", -1, netId)
-            SupportProxies[netId] = nil
-        end
-    end
-end)
 
 -- Display support cooldown on HUD
 CreateThread(function()
