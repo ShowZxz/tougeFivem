@@ -208,24 +208,27 @@ RegisterCommand("aforce", function()
 
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
 
-    ApplyForceToEntity(
-        ped,
-        3,
-        0.0, 0.0, 20.0,
-        0.0, 0.0, 0.0,
-        0,
-        true,
-        true,
-        true,
-        false,
-        true
-    )
+    for i = 1, 6 do
+        ApplyForceToEntity(
+            ped,
+            3,
+            0.0, 0.0, 4.2, -- X positif = propulsion en avant le ped
+            0.0, 0.0, 0.0,
+            0,
+            true,
+            true,
+            true,
+            false,
+            true
+        )
+        Wait(40)
+    end
     Wait(250)
     for i = 1, 6 do
         ApplyForceToEntity(
             ped,
             3,
-            0.0, 7.0, 0.0, -- Y positif = propulsion en avant le ped
+            0.0, 4.2, 0.0, -- Y positif = propulsion en avant le ped
             0.0, 0.0, 0.0,
             0,
             true,

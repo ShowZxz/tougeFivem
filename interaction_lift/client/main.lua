@@ -51,7 +51,7 @@ CreateThread(function()
 
         if not activeAction then goto continue end
         if not IsControlJustPressed(0, Config.Keys.INTERACT) then goto continue end
-        if not Config.EnableInteractionButtons then goto continue end
+        if Config.EnableOxTargetIntegration then goto continue end
 
         local now = GetGameTimer()
 

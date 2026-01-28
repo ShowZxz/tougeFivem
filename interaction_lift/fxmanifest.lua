@@ -15,7 +15,8 @@ client_script { 'client/config.lua',
 'client/integrations/qb.lua',
 'client/integrations/ox_target.lua',
 'client/integrations/qb_target.lua',
-'client/integrations/proxy.lua'
+'client/integrations/proxy.lua',
+'client/integrations/shx_menu.lua'
 
 }
 

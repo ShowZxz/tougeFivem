@@ -144,7 +144,7 @@ RegisterNetEvent("interaction_lift:support:enable", function(mode)
     Support.mode = mode
     Support.CreateProxy(mode)
 
-    FreezeEntityPosition(ped, true)
+    --FreezeEntityPosition(ped, true)
 
     local anim = Config.Animation[mode:upper()]
     RequestAnimDict(anim.DICTIDLE)
