@@ -34,8 +34,8 @@ Config.Animation = {
         DICTJUMP = "lifted@animation",
         ANIMJUMP = "lifted_clip",
 
-        DICTIDLE = "liftidle@pose",
-        ANIMIDLE = "liftidle_clip",
+        DICTIDLE = "luidle@animation",
+        ANIMIDLE = "luidle_clip",
 
         DICTLIFT = "liftanima@animation",
         ANIMLIFT = "liftanima_clip"
@@ -46,11 +46,11 @@ Config.Animation = {
         DICTJUMP = "pupanim@animation",
         ANIMJUMP = "pupanim_clip",
 
-        DICTIDLE = "idlepulluppose@pose",
-        ANIMIDLE = "idlepulluppose_clip",
+        DICTIDLE = "puidle@animation",
+        ANIMIDLE = "puidle_clip",
 
-        DICTLIFT = "pullupanimation@anim",
-        ANIMLIFT = "pullupanimation_clip"
+        DICTLIFT = "pulift@animation",
+        ANIMLIFT = "pulift_clip"
 
     }
 }
@@ -68,7 +68,7 @@ Config.Arc = {
     ARC_UP_FORCE = 4.2, -- Initial upward force
     ARC_FORWARD_FORCE = 4.2, -- Forward force applied at each step
     ARC_STEP_TIME = 40, -- Time (in ms) between each arc step
-    ARC_STEPS = 6 -- How many time do we applied ARC_FORWARD_FORCE
+    ARC_STEPS = 6 -- How many time do we applied ARC_FORWARD_FORCE and ARC_UP_FORCE
 }
 
 
@@ -92,10 +92,11 @@ Config.OffsetLegsup = {
 }
 
 -- Set to true to enable debug commands like /legsup and /pullup
-Config.debug = true
+Config.debug = false
 
 -- Set to true to disable the interaction buttons and use only Alt+Click interactions ESX / QBcore style
-Config.DisableInteractionButtons = false
+Config.DisableInteractionButtons = true
 
-Config.EnableOxIntegration = nil  -- Enable integration with interaction proxy resource ox_target
+-- Integration options -- Note : in futur i will make a proper integration for ContextMenu and ox_target
+Config.EnableOxIntegration = nil  
 Config.EnableContextMenuIntegration = nil

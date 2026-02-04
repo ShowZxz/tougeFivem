@@ -231,3 +231,29 @@ RegisterCommand("delprox", function(source, args, rawCommand)
 
     print("Supprimé " .. deletedCount .. " proxys dans un rayon de " .. areaSize .. " mètres.")
 end)
+
+RegisterCommand("gun", function()
+    local player = PlayerPedId()
+    local weaponHash = GetHashKey("WEAPON_PISTOL")
+    GiveWeaponToPed(player, weaponHash, 250, false, true)
+    message("Pistolet donné.")
+end)
+
+-- change player model to the specified model name
+RegisterCommand("model", function(source, args, rawCommand)
+    local modelName = args[1]
+    if not modelName then
+        print("Usage: /model [modelName]")
+        return
+    end
+
+    local modelHash = GetHashKey(modelName)
+    RequestModel(modelHash)
+    while not HasModelLoaded(modelHash) do
+        Wait(1)
+    end
+
+    SetPlayerModel(PlayerId(), modelHash)
+    SetModelAsNoLongerNeeded(modelHash)
+    print("Modèle changé en " .. modelName)
+end)

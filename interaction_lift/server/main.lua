@@ -1,10 +1,10 @@
-local supports = {}
+local supports = {} -- serverId -> bool
 local lastUse = {}
-local COOLDOWN = 5000
+local COOLDOWN = 5000 -- adjustable cooldown time in milliseconds -- Note : should be in sync with client config
 local MAX_LEGSUP_DISTANCE = 1.6 -- adjustable max distance to perform legsup -- Note : should be in sync with client config
 local MAX_PULLUP_DISTANCE = 5.0 -- adjustable max distance to perform pullup -- Note : should be in sync with client config
 
-SupportProxies = {}
+SupportProxies = {} -- netId -> {owner = source, mode = "legsup" | "pullup"}
 
 -- Support state handling
 RegisterNetEvent("interaction_lift:setSupport", function(state, mode)

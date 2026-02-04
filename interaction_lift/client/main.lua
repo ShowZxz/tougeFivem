@@ -56,7 +56,7 @@ CreateThread(function()
         local now = GetGameTimer()
 
 
-        local cd = Config.Cooldowns.INTERACTION[activeAction:upper()]
+        local cd = Config.SupportToggleCooldown
         local last = lastUse[activeAction]
 
         if now - last < cd then
@@ -218,4 +218,13 @@ RegisterCommand("testc", function()
     while not HasAnimDictLoaded(Config.Animation.LEGSUP.DICTLIFT) do Wait(10) end
     TaskPlayAnim(PlayerPedId(), Config.Animation.LEGSUP.DICTLIFT, Config.Animation.LEGSUP.ANIMLIFT, 8.0, -8.0, -1, 1, 0,
         false, false, false)
+end)
+
+RegisterCommand("stopemote", function()
+    if not Config.debug then
+        errorMsg("❌ Commande désactivée")
+        return
+    end
+
+    ClearPedTasks(PlayerPedId())
 end)

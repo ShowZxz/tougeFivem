@@ -1,8 +1,6 @@
 A FAIRE :
-- Refaire les animations
-- qb_target a test
 - Read me
-- Documentation
+- Documentation Config.lua
  
 Code :
 - Config
@@ -18,9 +16,11 @@ Finish :
 - Commenter le code--
 - ContextMenu de flashback WL--
 - Ajouter le fix de applyforce--
+- Refaire les animations--
 
 
 A L'AVENIR :
 - distance 1m du mur pour pulling up / DANS UN AUTRE REALASE
 - Cooldown pour les registercommands A VOIR
+- add qb_target
 
