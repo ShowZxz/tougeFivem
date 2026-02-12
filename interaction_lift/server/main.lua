@@ -32,12 +32,12 @@ RegisterNetEvent("interaction_lift:legsup", function(target)
     lastUse[src] = lastUse[src] or 0
 
     if now - lastUse[src] < COOLDOWN then
-        TriggerClientEvent("interaction_lift:denied", src, "⏳ Cooldown actif")
+        TriggerClientEvent("interaction_lift:denied", src, "⏳ Cooldown actif") --Cooldown active
         return
     end
 
     if not supports[target] then
-        TriggerClientEvent("interaction_lift:denied", src, "❌ Le joueur ne soutient pas")
+        TriggerClientEvent("interaction_lift:denied", src, "❌ Le joueur ne soutient pas") -- Player not Supporting
         return
     end
 
@@ -53,7 +53,7 @@ RegisterNetEvent("interaction_lift:legsup", function(target)
     local dist = #(srcCoords - targetCoords)
 
     if dist > MAX_LEGSUP_DISTANCE then
-        TriggerClientEvent("interaction_lift:denied", src, "❌ Trop loin du support")
+        TriggerClientEvent("interaction_lift:denied", src, "❌ Trop loin du support") -- Too far from the support
         return
     end
 
@@ -91,12 +91,12 @@ RegisterNetEvent("interaction_lift:pullup", function(target)
     lastUse[src] = lastUse[src] or 0
 
     if now - lastUse[src] < COOLDOWN then
-        TriggerClientEvent("interaction_lift:denied", src, "⏳ Cooldown actif")
+        TriggerClientEvent("interaction_lift:denied", src, "⏳ Cooldown actif") --Cooldown active
         return
     end
 
     if not supports[target] then
-        TriggerClientEvent("interaction_lift:denied", src, "❌ Le joueur ne soutient pas")
+        TriggerClientEvent("interaction_lift:denied", src, "❌ Le joueur ne soutient pas") -- Player not Supporting
         return
     end
 
@@ -112,7 +112,7 @@ RegisterNetEvent("interaction_lift:pullup", function(target)
     local dist = #(srcCoords - targetCoords)
 
     if dist > MAX_PULLUP_DISTANCE then
-        TriggerClientEvent("interaction_lift:denied", src, "❌ Trop loin du support")
+        TriggerClientEvent("interaction_lift:denied", src, "❌ Trop loin du support") -- Too far from the support
         return
     end
 
@@ -159,7 +159,7 @@ RegisterNetEvent("interaction_lift:removeProxy", function(netId)
     TriggerClientEvent("interaction_lift:proxyRemoved", -1, netId)
 end)
 
--- If a player disconnects or crash, remove their proxy ped
+-- If a player disconnects or crash during a support mode than remove their proxy ped
 AddEventHandler("playerDropped", function()
     for netId, data in pairs(SupportProxies) do
         if data.owner == source then

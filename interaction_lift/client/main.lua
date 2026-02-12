@@ -81,7 +81,7 @@ end)
 CreateThread(function()
     while true do
         Wait(0)
-        -- disable control if ox_target is used
+        -- disable control if ox_target or ContextMenu is used
         if Config.EnableOxIntegration or Config.EnableContextMenuIntegration then goto continue end
         if IsControlJustPressed(0, Config.Keys.LEGSUP_SUPPORT) then
             TriggerEvent("interaction_lift:support:enable", "legsup")

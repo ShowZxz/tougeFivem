@@ -44,3 +44,9 @@ function DrawHudText(text, x, y)
     AddTextComponentSubstringPlayerName(text)
     EndTextCommandDisplayText(x, y)
 end
+
+function DrawHudInfo(msg)
+    AddTextEntry('HelpMsg', msg)
+    BeginTextCommandDisplayHelp('HelpMsg')
+    EndTextCommandDisplayHelp(0, false, false, -1)
+end

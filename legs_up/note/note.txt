@@ -1,6 +1,8 @@
 A FAIRE :
-- Read me
-- Documentation Config.lua
+- Read me en anglais
+- Tebex
+- Discord support
+
  
 Code :
 - Config
@@ -17,6 +19,7 @@ Finish :
 - ContextMenu de flashback WL--
 - Ajouter le fix de applyforce--
 - Refaire les animations--
+- Documentation Config.lua--
 
 
 A L'AVENIR :

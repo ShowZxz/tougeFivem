@@ -1,4 +1,6 @@
-Legsup = {}
+Legsup = {
+    isClimbing = false
+}
 
 local BOOST_TIME = (Config.Frame.BOOST_FRAME / Config.Frame.ANIM_FPS) * 1000
 
@@ -140,7 +142,20 @@ RegisterNetEvent("legsup:applyForce", function()
     Wait(0)
 
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
-    local isClimbing = true
+
+    Legsup.isClimbing = true
+    CreateThread(function()
+        while Legsup.isClimbing do
+            DisableControlAction(0, 30, true)
+            DisableControlAction(0, 31, true)
+            DisableControlAction(0, 32, true)
+            DisableControlAction(0, 33, true)
+            DisableControlAction(0, 34, true)
+            DisableControlAction(0, 35, true)
+            Wait(0)
+        end
+    end)
+
 
     for i = 1, Config.Arc.ARC_STEPS do
         ApplyForceToEntity(
@@ -158,6 +173,7 @@ RegisterNetEvent("legsup:applyForce", function()
         Wait(Config.Arc.ARC_STEP_TIME)
     end
     Wait(250)
+    Legsup.isClimbing = false
     for i = 1, Config.Arc.ARC_STEPS do
         ApplyForceToEntity(
             ped,
@@ -173,18 +189,12 @@ RegisterNetEvent("legsup:applyForce", function()
         )
         Wait(Config.Arc.ARC_STEP_TIME)
     end
-    CreateThread(function()
-        while isClimbing do
-            DisableControlAction(0, 32, true)
-            DisableControlAction(0, 33, true)
-            DisableControlAction(0, 34, true)
-            DisableControlAction(0, 35, true)
-            Wait(0)
-        end
-    end)
 
     SetPedCanRagdoll(ped, true)
 end)
+
+
+
 
 -- Debug command to test legsup force application -- Need to be improve later --Here for testing
 RegisterCommand("aforce", function()

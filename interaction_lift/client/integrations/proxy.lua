@@ -2,7 +2,7 @@ Support.Proxies = {}
 
 -- Registering a proxy ped when created by another player and validated by the server
 RegisterNetEvent("interaction_lift:proxyCreated", function(owner, netId, mode)
-    print("[interaction_lift] Proxy reçu :", owner, netId, mode)
+    --print("[interaction_lift] Proxy reçu :", owner, netId, mode)
 
     CreateThread(function()
         local timeout = GetGameTimer() + 5000
@@ -12,13 +12,13 @@ RegisterNetEvent("interaction_lift:proxyCreated", function(owner, netId, mode)
         end
 
         if not NetworkDoesEntityExistWithNetworkId(netId) then
-            print("❌ Proxy non streamé après timeout :", netId)
+            --print("❌ Proxy non streamé après timeout :", netId)
             return
         end
 
         local entity = NetToPed(netId)
         if not entity or not DoesEntityExist(entity) then
-            print("❌ NetToPed échoué :", netId)
+            print("❌ NetToPed failed :", netId)
             return
         end
 
@@ -28,7 +28,7 @@ RegisterNetEvent("interaction_lift:proxyCreated", function(owner, netId, mode)
             mode = mode
         }
 
-        print("✅ Proxy prêt :", entity)
+        --print("Proxy prêt :", entity)
 
         if Config.EnableOxIntegration then
             registerProxyTarget(entity, netId)
@@ -51,7 +51,7 @@ RegisterNetEvent("interaction_lift:proxyRemoved", function(netId)
     end
 
     Support.Proxies[netId] = nil
-    print("[interaction_lift] Proxy supprimé :", netId)
+    print("[interaction_lift] Proxy deleted :", netId)
 end)
 
 
@@ -78,5 +78,5 @@ function configureProxy(proxy)
         false, false, true, false, 2, true
     )
 
-    print("[interaction_lift] Proxy ped Configure :", proxy)
+    --print("[interaction_lift] Proxy ped Configure :", proxy)
 end

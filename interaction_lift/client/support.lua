@@ -223,6 +223,22 @@ CreateThread(function()
         ::continue::
     end
 end)
+CreateThread(function()
+    while true do
+        Wait(0)
+
+        if not Support.active then
+            goto continue
+        end
+
+        local ped = PlayerPedId()
+        local coords = GetEntityCoords(ped)
+
+        DrawHudInfo("~b~Support~s~ enable\nPress ~INPUT_VEH_DUCK~ to ~r~stop~s~ supporting")
+
+        ::continue::
+    end
+end)
 
 -- Force disable support on damage
 CreateThread(function()

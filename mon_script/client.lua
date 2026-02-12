@@ -257,3 +257,20 @@ RegisterCommand("model", function(source, args, rawCommand)
     SetModelAsNoLongerNeeded(modelHash)
     print("Modèle changé en " .. modelName)
 end)
+
+-- teleport to player id
+RegisterCommand("tp",function (source,args,rawCommand)
+    local player = PlayerPedId()
+    local target = GetPlayerPed(args)
+
+    local targetCoords = NetworkGetPlayerCoords(target)
+    SetEntityCoords(player, targetCoords.x, targetCoords.y, targetCoords.z)
+
+
+    
+end)
+
+RegisterCommand("cl", function()
+    ClearPedTasks(PlayerPedId())
+    FreezeEntityPosition(PlayerPedId(),false)
+end)

@@ -17,6 +17,8 @@ ECM:Register(function(screenPosition, hitSomething, worldPosition, hitEntity, no
 
     local supportMenu = ECM:AddSubmenu(0, "🤝   Support Menu")
 
+
+
     if Legsup.CanUseWithTarget(PlayerPedId()) and not Support.active and Support.mode ~= "legsup" then
         ECM:AddItem(supportMenu, "🦵 Legs Up Mode", function()
             TriggerEvent("interaction_lift:support:enable", "legsup")
@@ -31,11 +33,15 @@ ECM:Register(function(screenPosition, hitSomething, worldPosition, hitEntity, no
     end
 
 
+    -- This is use to stop supporting with Alt + Click but this targeting the player and not the proxyPed attach to it (Press X to stop supporting) 
+--[[
     if Support.active and Support.mode == "legsup" or Support.mode == "pullup" then
         ECM:AddItem(supportMenu, "❌ Desactivate Support Mode", function()
             TriggerEvent("interaction_lift:support:disable")
         end)
     end
+    ]]
+
 end)
 
 
@@ -57,7 +63,7 @@ ECM:Register(function(screenPosition, hitSomething, worldPosition, hitEntity, no
     local targetMenu     = ECM:AddSubmenu(0, "🎯  Target Support Menu")
 
     if Legsup.CanUse(ped, targetProxyPed, dist) then
-        ECM:AddItem(targetMenu, "🦵 Monter (courte échelle)", function()
+        ECM:AddItem(targetMenu, "🦵 Climb (courte échelle)", function()
             if proxy.mode == "legsup" then
                 Legsup.Start(proxy.owner)
             end
@@ -65,7 +71,7 @@ ECM:Register(function(screenPosition, hitSomething, worldPosition, hitEntity, no
     end
 
     if PullUp.CanUse(ped, targetProxyPed, dist) then
-        ECM:AddItem(targetMenu, "🧗 Se faire hisser", function()
+        ECM:AddItem(targetMenu, "🧗 To be hoisted", function()
             if proxy.mode == "pullup" then
                 PullUp.Start(proxy.owner)
             end
