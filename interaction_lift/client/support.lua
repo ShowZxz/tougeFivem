@@ -50,7 +50,7 @@ function Support.CreateProxy(mode)
     --print("Config EnableOxIntegration:", Config.EnableContextMenuIntegration)
     if not Config.EnableOxIntegration and not Config.EnableContextMenuIntegration  then return end
 
-    print("[interaction_lift] Création du proxy ped en mode :", mode)
+    --print("[interaction_lift] Création du proxy ped en mode :", mode)
     local ped = PlayerPedId()
     local coords = GetEntityCoords(ped)
 
@@ -120,22 +120,22 @@ RegisterNetEvent("interaction_lift:support:enable", function(mode)
 
     if mode == "legsup" then
         if isNearWall(ped, Config.Distances.MIN_WALL_DISTANCE) then
-            errorMsg("❌ Trop proche d'un mur")
+            errorMsg("❌ Too close to a wall")
             return
         end
         if hasRoofAbove(ped, Config.Distances.MIN_ROOF_HEIGHT) then
-            errorMsg("❌ Pas assez de hauteur")
+            errorMsg("❌ Not enough height above")
             return
         end
         if not isSupportStateValid(ped) then
-            errorMsg("❌ Position invalide")
+            errorMsg("❌ Invalid position for legsup")
             return
         end
     end
 
     if mode == "pullup" then
         if not isSupportStateValid(ped) then
-            errorMsg("❌ Position invalide pour un pull-up")
+            errorMsg("❌ Invalid position for pullup")
             return
         end
     end
@@ -161,9 +161,8 @@ RegisterNetEvent("interaction_lift:support:enable", function(mode)
     )
 
     TriggerServerEvent("interaction_lift:setSupport", true, mode)
-    --TriggerServerEvent("interaction_lift:createProxy", Support.mode)
 
-    message(("Support %s activé"):format(mode))
+    message(("Support %s enabled"):format(mode))
 end)
 
 --Disable support mode
@@ -181,7 +180,7 @@ RegisterNetEvent("interaction_lift:support:disable", function()
 
     TriggerServerEvent("interaction_lift:setSupport", false)
 
-    message("❌ Support désactivé")
+    message("❌ Support disabled")
 end)
 
 AddEventHandler("onResourceStop", function(res)
@@ -216,13 +215,14 @@ CreateThread(function()
         end
 
         DrawHudText(
-            ("Support disponible dans ~y~%.1fs"):format(remaining),
+            ("Support available in ~y~%.1fs"):format(remaining),
             0.5, 0.88
         )
 
         ::continue::
     end
 end)
+
 CreateThread(function()
     while true do
         Wait(0)

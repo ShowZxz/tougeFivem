@@ -14,10 +14,11 @@ local lastUse = {
 }
 
 
---- Action detection
+--- Action detection. Note : this for standalone interaction, if ox_target or ContextMenu is used, the detection is handled in the respective integration file
 CreateThread(function()
     while true do
         Wait(200)
+        if Config.EnableOxIntegration or Config.EnableContextMenuIntegration then return end
 
         activeAction = nil
         targetServerId = nil
@@ -44,14 +45,14 @@ CreateThread(function()
     end
 end)
 
--- Interaction handling by key press
+-- Interaction handling by key press. Note : this for standalone interaction, if ox_target or ContextMenu is used, the detection is handled in the respective integration file
 CreateThread(function()
     while true do
         Wait(0)
 
         if not activeAction then goto continue end
         if not IsControlJustPressed(0, Config.Keys.INTERACT) then goto continue end
-        if Config.EnableOxIntegration or Config.EnableContextMenuIntegration then goto continue end
+        if Config.EnableOxIntegration or Config.EnableContextMenuIntegration then goto continue end -- Maybe do a return here instead of checking every frame in the key press thread?
 
         local now = GetGameTimer()
 

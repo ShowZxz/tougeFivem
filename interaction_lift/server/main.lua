@@ -32,12 +32,12 @@ RegisterNetEvent("interaction_lift:legsup", function(target)
     lastUse[src] = lastUse[src] or 0
 
     if now - lastUse[src] < COOLDOWN then
-        TriggerClientEvent("interaction_lift:denied", src, "⏳ Cooldown actif") --Cooldown active
+        TriggerClientEvent("interaction_lift:denied", src, "⏳ Cooldown active") --Cooldown active
         return
     end
 
     if not supports[target] then
-        TriggerClientEvent("interaction_lift:denied", src, "❌ Le joueur ne soutient pas") -- Player not Supporting
+        TriggerClientEvent("interaction_lift:denied", src, "❌ The player does not support") -- Player not Supporting
         return
     end
 
@@ -53,7 +53,7 @@ RegisterNetEvent("interaction_lift:legsup", function(target)
     local dist = #(srcCoords - targetCoords)
 
     if dist > MAX_LEGSUP_DISTANCE then
-        TriggerClientEvent("interaction_lift:denied", src, "❌ Trop loin du support") -- Too far from the support
+        TriggerClientEvent("interaction_lift:denied", src, "❌ Too far from the support") -- Too far from the support
         return
     end
 
@@ -91,12 +91,12 @@ RegisterNetEvent("interaction_lift:pullup", function(target)
     lastUse[src] = lastUse[src] or 0
 
     if now - lastUse[src] < COOLDOWN then
-        TriggerClientEvent("interaction_lift:denied", src, "⏳ Cooldown actif") --Cooldown active
+        TriggerClientEvent("interaction_lift:denied", src, "⏳ Cooldown active") --Cooldown active
         return
     end
 
     if not supports[target] then
-        TriggerClientEvent("interaction_lift:denied", src, "❌ Le joueur ne soutient pas") -- Player not Supporting
+        TriggerClientEvent("interaction_lift:denied", src, "❌ The player does not support") -- Player not Supporting
         return
     end
 
@@ -112,7 +112,7 @@ RegisterNetEvent("interaction_lift:pullup", function(target)
     local dist = #(srcCoords - targetCoords)
 
     if dist > MAX_PULLUP_DISTANCE then
-        TriggerClientEvent("interaction_lift:denied", src, "❌ Trop loin du support") -- Too far from the support
+        TriggerClientEvent("interaction_lift:denied", src, "❌ Too far from the support") -- Too far from the support
         return
     end
 
@@ -120,7 +120,6 @@ RegisterNetEvent("interaction_lift:pullup", function(target)
     supports[target] = false
 
     print(("[PULLUP] %s -> %s (%.2fm)"):format(src, target, dist))
-    -- logique pullup
 
     TriggerClientEvent("pullup:align", src, target)
 
