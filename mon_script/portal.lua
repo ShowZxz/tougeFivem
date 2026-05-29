@@ -1,5 +1,4 @@
 function teleport(player, destination)
-
     -- Animation de salutation
     RequestAnimDict("anim@mp_player_intcelebrationmale@salute")
     while not HasAnimDictLoaded("anim@mp_player_intcelebrationmale@salute") do
@@ -28,7 +27,6 @@ function teleport(player, destination)
 
     -- particule
     StopParticleFxLooped(fx, 0)
-
 end
 
 function message(msg)
@@ -39,22 +37,22 @@ end
 
 Citizen.CreateThread(function()
     -- Définition des portails dans une table
-    local portails = {{
+    local portails = { {
         name = "Portail Ville → Île",
-        from = vector3(229.5554, -797.7112, 30.59146), -- Entrée
+        from = vector3(229.5554, -797.7112, 30.59146),  -- Entrée
         to = vector3(54.707916, 7238.718750, 2.704340), -- Sortie
         blipColor = 5
     }, {
         name = "Portail Île → Ville",
         from = vector3(54.707916, 7238.718750, 2.704340), -- Entrée
-        to = vector3(229.5554, -797.7112, 30.59146), -- Sortie
+        to = vector3(229.5554, -797.7112, 30.59146),      -- Sortie
         blipColor = 6
     }, {
         name = "Portail Secret",
         from = vec3(205.145050, 197.972290, 105.147591),
         to = vector3(-500.0, 300.0, 100.0),
         blipColor = 2
-    } -- AUtre portails ⬇
+    } -- AUtre portails
     }
 
     -- Création automatique des blips
@@ -69,7 +67,7 @@ Citizen.CreateThread(function()
         portal.inZone = false -- état interne pour éviter le spam
     end
 
-    -- Boucle principale
+
     while true do
         Wait(0)
         local player = PlayerPedId()

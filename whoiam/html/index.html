@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="container">
+      <h1>Entre ton mot</h1>
+
+      <p id="queueCount">0 joueurs</p>
+
+      <input id="wordInput" type="text" placeholder="Tape ton mot ici" maxlength="20" minlength="3" />
+
+      <button onclick="submitWord()">Valider</button>
+      <button onclick="closeUI()">Annuler</button>
+
+      <div id="rules">
+        <h2>Règles du jeu</h2>
+        <ul>
+          <li>Le but du jeu est de faire deviner un mot aux autres joueurs.</li>
+          <li>Chaque joueur doit entrer un mot de 3 à 20 caractères.</li>
+          <li>Une fois que tous les joueurs ont entré leur mot, vous pouvez commencer le jeu.</li>
+          <li>Les joueurs doivent deviner les mots des autres en posant des questions ou en faisant des propositions.</li>
+          <li>Le joueur qui devine son propre mot gagne la partie.</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div id="guessContainer">
+      <h1>Devine ton mot</h1>
+
+      <input id="guessInput" type="text" placeholder="Tape le mot ici" maxlength="20" minlength="3" />
+
+      <button onclick="submitGuess()">Valider</button>
+
+      <button onclick="closeGuessUI()">Fermer</button>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

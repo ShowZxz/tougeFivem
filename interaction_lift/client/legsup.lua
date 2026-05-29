@@ -144,6 +144,7 @@ RegisterNetEvent("legsup:applyForce", function()
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
 
     Legsup.isClimbing = true
+
     CreateThread(function()
         while Legsup.isClimbing do
             DisableControlAction(0, 30, true)
@@ -172,7 +173,9 @@ RegisterNetEvent("legsup:applyForce", function()
         )
         Wait(Config.Arc.ARC_STEP_TIME)
     end
+
     Wait(250)
+    
     Legsup.isClimbing = false
     for i = 1, Config.Arc.ARC_STEPS do
         ApplyForceToEntity(
