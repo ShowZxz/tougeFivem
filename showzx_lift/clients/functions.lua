@@ -18,21 +18,9 @@ end
 
 
 
-function ShowZxLift.IsOnCooldown()
-    local now = GetGameTimer()
-    return Support.cooldownEnd and now < Support.cooldownEnd
-end
 
-function ShowZxLift.Start(data)
-    if ShowZxLift.IsOnCooldown() then
-        errorMsg("Veuillez attendre avant de relancer l'action.")
-        return
-    end
 
-    Support.lastToggle = GetGameTimer()
-    Support.cooldownEnd = Support.lastToggle + 1000 -- 1 seconde de cooldown
-    TriggerServerEvent("showzx_lift:liftStart", data.owner)
-end
+
 
 function isSupportStateValid(ped)
     return not (

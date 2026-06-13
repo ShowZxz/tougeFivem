@@ -30,7 +30,6 @@ RegisterCommand("lower", function()
 end)
 
 RegisterNetEvent("showzx_lift:enableLiftMode", function()
- 
     local ped = PlayerPedId()
     local pos = GetEntityCoords(ped)
     local forward = GetEntityForwardVector(ped)
@@ -60,7 +59,7 @@ RegisterNetEvent("showzx_lift:enableLiftMode", function()
         Wait(0)
     end
 
-   local ropeLength = pos.z + 3 - groundZ
+    local ropeLength = pos.z + 3 - groundZ
 
     local rope = AddRope(
         ropeX,
@@ -85,7 +84,7 @@ RegisterNetEvent("showzx_lift:enableLiftMode", function()
     debugMsg("ropeLength = " .. ropeLength)
     debugMsg("Rope created with id " .. tostring(rope) .. " and length " .. tostring(ropeLength))
 
-    
+
 
     local topAnchorCoords = {
         x = ropeX,
@@ -99,18 +98,31 @@ RegisterNetEvent("showzx_lift:enableLiftMode", function()
         z = groundZ
     }
 
-
+    local landingPos = vector3(
+        pos.x,
+        pos.y,
+        pos.z
+    ) - (forward * 0.5)
 
     local ropeData = {
-        owner = nil, -- sera rempli par le serveur
+        owner = nil,
+
         topAnchor = topAnchorCoords,
-        bottomAnchor = bottomAnchorCoords
+        bottomAnchor = bottomAnchorCoords,
+
+        landingPos = {
+            x = landingPos.x,
+            y = landingPos.y,
+            z = landingPos.z
+        },
+
+        landingHeading = GetEntityHeading(ped)
     }
 
     Support.active = true
     Support.activeRope = rope
-    Support.topAnchorEntity = topAnchor
-    Support.bottomAnchorEntity = bottomAnchor
+    Support.topAnchorEntity = topAnchorCoords       -- A voir
+    Support.bottomAnchorEntity = bottomAnchorCoords -- A voir
     Support.ownerId = nil
 
 
@@ -186,7 +198,6 @@ RegisterNetEvent("showzx_lift:setRopeOwner", function(ropeData)
     print("[showzx_lift DEBUG] Creating remote rope for owner=" .. tostring(owner))
 
     CreateThread(function()
-
         RopeLoadTextures()
 
         while not RopeAreTexturesLoaded() do
@@ -263,7 +274,6 @@ RegisterNetEvent("showzx_lift:deleteRopeForOwner", function(owner)
 end)
 
 RegisterNetEvent("showzx_lift:lifting", function(data)
-
     if type(data) ~= "table" then return end
 
     if not data.bottomAnchor or not data.topAnchor or not data.owner then
@@ -334,7 +344,6 @@ RegisterNetEvent("showzx_lift:lifting", function(data)
         local wanted = fromPos + (targetPos - fromPos) * t
         SetEntityCoordsNoOffset(ped, wanted.x, wanted.y, wanted.z, true, false, false)
         Wait(0)
-
     end
 
     FreezeEntityPosition(ped, false)
@@ -374,12 +383,27 @@ function ShowZxLift.GetNearestRopeData(ped, maxDistance)
     return nearestRope, nearestDist
 end
 
+function ShowZxLift.IsOnCooldown()
+    local now = GetGameTimer()
+    return Support.cooldownEnd and now < Support.cooldownEnd
+end
+
+function ShowZxLift.Start(data)
+    if ShowZxLift.IsOnCooldown() then
+        errorMsg("Veuillez attendre avant de relancer l'action.")
+        return
+    end
+
+    Support.lastToggle = GetGameTimer()
+    Support.cooldownEnd = Support.lastToggle + 1000 -- 1 seconde de cooldown
+    TriggerServerEvent("showzx_lift:liftStart", data.owner)
+end
+
 CreateThread(function()
     while true do
         Wait(50)
         local ped = PlayerPedId()
         local ropeData, dist = ShowZxLift.GetNearestRopeData(ped, 2.0)
-        print("[showzx_lift DEBUG] Nearest rope check: dist=" .. tostring(dist) .. " ropeData=" .. tostring(ropeData))
 
         if ropeData and ShowZxLift.CanUse(ped, dist) then
             BeginTextCommandDisplayHelp("STRING")
@@ -396,4 +420,3 @@ CreateThread(function()
         end
     end
 end)
-
