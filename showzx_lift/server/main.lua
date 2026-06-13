@@ -16,22 +16,31 @@ RegisterNetEvent("showzx_lift:addRopeOwner", function(ropeData)
     local owner = ropeData.owner
     local topAnchor = ropeData.topAnchor
     local bottomAnchor = ropeData.bottomAnchor
+    local landingPos = ropeData.landingPos
+    local landingHeading = ropeData.landingHeading
 
-    if not owner or not topAnchor or not bottomAnchor then print("showzx_lift: Incomplete rope data provided.") return end
+    if not owner or not topAnchor or not bottomAnchor or not landingPos or not landingHeading then
+        print("showzx_lift: Incomplete rope data provided.")
+        return
+    end
 
 
 
     local name = GetPlayerName(source) or "Unknown"
-    print(("showzx_lift: %s added a rope at top=(%.2f,%.2f,%.2f) bottom=(%.2f,%.2f,%.2f)"):format(
+    print(("showzx_lift: %s added a rope at top=(%.2f,%.2f,%.2f) bottom=(%.2f,%.2f,%.2f) landing=(%.2f,%.2f,%.2f) heading=(%.2f)"):format(
         name,
         topAnchor.x, topAnchor.y, topAnchor.z,
-        bottomAnchor.x, bottomAnchor.y, bottomAnchor.z
+        bottomAnchor.x, bottomAnchor.y, bottomAnchor.z,
+        landingPos.x, landingPos.y, landingPos.z,
+        landingHeading
     ))
 
     listOfRopes[source] = {
         owner = owner,
         topAnchor = topAnchor,
-        bottomAnchor = bottomAnchor
+        bottomAnchor = bottomAnchor,
+        landingPos = landingPos,
+        landingHeading = landingHeading
     }
     TriggerClientEvent("showzx_lift:setRopeOwner", -1, listOfRopes[source])
 end)

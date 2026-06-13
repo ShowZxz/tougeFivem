@@ -276,7 +276,10 @@ end)
 RegisterNetEvent("showzx_lift:lifting", function(data)
     if type(data) ~= "table" then return end
 
-    if not data.bottomAnchor or not data.topAnchor or not data.owner then
+    if not data.bottomAnchor
+        or not data.topAnchor
+        or not data.landingPos
+        or not data.landingHeading then
         print("showzx_lift:lifting: Incomplete lift data provided.")
         return
     end
@@ -284,19 +287,8 @@ RegisterNetEvent("showzx_lift:lifting", function(data)
     local ped = PlayerPedId()
     local bottom = data.bottomAnchor
     local top = data.topAnchor
-
+    SetEntityHeading(ped, data.landingHeading + 180.0) -- Rotate the player to face the opposite direction of the landing heading
     SetEntityCoordsNoOffset(ped, bottom.x, bottom.y, bottom.z + 0.5, false, false, false)
-
-    local supportPed = nil
-    local player = GetPlayerFromServerId(data.owner)
-
-    if player ~= -1 then
-        supportPed = GetPlayerPed(player)
-    end
-
-    if not supportPed or not DoesEntityExist(supportPed) then
-        supportPed = nil
-    end
 
     FreezeEntityPosition(ped, true)
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
@@ -322,13 +314,12 @@ RegisterNetEvent("showzx_lift:lifting", function(data)
     Wait(150)
 
     local fromPos = GetEntityCoords(ped)
-    local targetPos = vector3(top.x, top.y, endZ)
-    if supportPed and DoesEntityExist(supportPed) then
-        local spCoords = GetEntityCoords(supportPed)
-        local spForward = GetEntityForwardVector(supportPed)
-        targetPos = spCoords + (spForward * 0.5)
-        targetPos = vector3(targetPos.x, targetPos.y, endZ)
-    end
+    
+    local targetPos = vector3(
+        data.landingPos.x,
+        data.landingPos.y,
+        endZ
+    )
 
     local horizDuration = 800
     local t1 = GetGameTimer()
@@ -345,7 +336,6 @@ RegisterNetEvent("showzx_lift:lifting", function(data)
         SetEntityCoordsNoOffset(ped, wanted.x, wanted.y, wanted.z, true, false, false)
         Wait(0)
     end
-
     FreezeEntityPosition(ped, false)
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
 end)
@@ -402,6 +392,11 @@ end
 CreateThread(function()
     while true do
         Wait(50)
+        if not listOfRopes then
+            Wait(1000)
+            goto continue
+        end
+
         local ped = PlayerPedId()
         local ropeData, dist = ShowZxLift.GetNearestRopeData(ped, 2.0)
 
@@ -418,5 +413,10 @@ CreateThread(function()
                 end
             end
         end
+        ::continue::
     end
 end)
+
+
+-- Note: ajouter une longuer min pour la corde / ajouter les animations de déploiement et de rétractation / ajouter un cooldown pour le déploiement et la rétractation
+-- 
