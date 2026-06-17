@@ -87,5 +87,38 @@ RegisterNetEvent("showzx_lift:liftStart", function(owner)
 
     -- Start the lift for the player
     TriggerClientEvent("showzx_lift:lifting", src, ropeData)
-    TriggerClientEvent("showzx_lift:playAnimation", src)
+    TriggerClientEvent("showzx_lift:playLiftAnim", src)
+end)
+
+RegisterNetEvent("showzx_lift:unLiftStart", function(owner)
+    local src = source
+
+    if not owner then
+        print("showzx_lift: Invalid owner provided for unlift start.")
+        return
+    end
+
+
+    local ropeData = listOfRopes[owner]
+    if not ropeData then
+        print("showzx_lift: No rope data found for owner.")
+        return
+    end
+
+    local srcPed = GetPlayerPed(src)
+    local srcCoords = GetEntityCoords(srcPed)
+
+    local dx = srcCoords.x - ropeData.landingPos.x
+    local dy = srcCoords.y - ropeData.landingPos.y
+    local dz = srcCoords.z - ropeData.landingPos.z
+    local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+
+    if dist > 4 then
+        TriggerClientEvent("showzx_lift:denied", src, "❌ Too far from the rope")
+        return
+    end
+
+    -- Start the lift for the player
+    TriggerClientEvent("showzx_lift:UnLifting", src, ropeData)
+    TriggerClientEvent("showzx_lift:playUnliftAnim", src)
 end)

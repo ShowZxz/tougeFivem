@@ -1,33 +1,10 @@
-Support = {
-    active = false,
-    activeRope = nil,
-    lastToggle = 0,
-    cooldownEnd = 0,
-}
+
 
 ListOfRopes = {} -- [ownerServerId] = { owner, topAnchor, bottomAnchor, visualRope, topAnchorEntity, bottomAnchorEntity }
 
 
 ShowZxLift = {}
 
-RegisterCommand("lift", function()
-    if Support.active then
-        errorMsg("You are already in lift mode.")
-        return
-    end
-
-
-    TriggerServerEvent("showzx_lift:setMode", true)
-end)
-
-RegisterCommand("lower", function()
-    if not Support.active then
-        errorMsg("You are not in lift mode.")
-        return
-    end
-
-    TriggerServerEvent("showzx_lift:setMode", false)
-end)
 
 RegisterNetEvent("showzx_lift:enableLiftMode", function()
     local ped = PlayerPedId()
@@ -52,6 +29,18 @@ RegisterNetEvent("showzx_lift:enableLiftMode", function()
 
     debugMsg("Ground found at Z=" .. tostring(groundZ) .. " for rope position")
 
+    local ropeLengthCheck = pos.z + 3 - groundZ
+    if ropeLengthCheck < 10.0 then
+        errorMsg("La corde est trop courte pour être déployée.")
+        Support.active = false
+        return
+    end
+
+    if ropeLengthCheck > 50.0 then
+        errorMsg("La corde est trop longue pour être déployée.")
+        Support.active = false
+        return
+    end
 
     RopeLoadTextures()
 
@@ -80,7 +69,7 @@ RegisterNetEvent("showzx_lift:enableLiftMode", function()
         false
     )
 
-    print("rope =", rope)
+    debugMsg("rope =", rope)
     debugMsg("ropeLength = " .. ropeLength)
     debugMsg("Rope created with id " .. tostring(rope) .. " and length " .. tostring(ropeLength))
 
@@ -121,13 +110,13 @@ RegisterNetEvent("showzx_lift:enableLiftMode", function()
 
     Support.active = true
     Support.activeRope = rope
-    Support.topAnchorEntity = topAnchorCoords       -- A voir
-    Support.bottomAnchorEntity = bottomAnchorCoords -- A voir
+    Support.topAnchorEntity = topAnchorCoords
+    Support.bottomAnchorEntity = bottomAnchorCoords
     Support.ownerId = nil
 
 
-    debugMsg("Rope data prepared and sending to server")
-    -- Envoie au serveur les coordonnées des deux ancres de la corde
+    message("Lift mode enabled.")
+    -- Envoie au serveur les informations de la corde pour qu'il puisse les partager avec les autres joueurs
     TriggerServerEvent("showzx_lift:addRopeOwner", ropeData)
 end)
 
@@ -137,32 +126,11 @@ RegisterNetEvent("showzx_lift:disableLiftMode", function()
         Support.activeRope = nil
     end
 
-    if Support.topAnchorEntity and DoesEntityExist(Support.topAnchorEntity) then
-        DeleteEntity(Support.topAnchorEntity)
-        Support.topAnchorEntity = nil
-    end
-
-    if Support.bottomAnchorEntity and DoesEntityExist(Support.bottomAnchorEntity) then
-        DeleteEntity(Support.bottomAnchorEntity)
-        Support.bottomAnchorEntity = nil
-    end
-
     Support.active = false
 
     if Support.ownerId then
         TriggerServerEvent("showzx_lift:removeRopeOwner", Support.ownerId)
         Support.ownerId = nil
-    end
-end)
-
-RegisterNetEvent("showzx_lift:notifyClient", function(isLifting)
-    if isLifting then
-        message("Lift mode enabled.")
-        TriggerEvent("showzx_lift:enableLiftMode")
-        TriggerEvent("showzx_lift:playDeployAnim")
-    else
-        errorMsg("Lift mode disabled.")
-        TriggerEvent("showzx_lift:disableLiftMode")
     end
 end)
 
@@ -293,7 +261,7 @@ RegisterNetEvent("showzx_lift:lifting", function(data)
     FreezeEntityPosition(ped, true)
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
 
-    local riseDuration = 1500
+    local riseDuration = ShowZxLiftConfig.Lifting.LIFT_DURATION
     local startZ = bottom.z + 0.5
     local endZ = top.z - 0.25
     local t0 = GetGameTimer()
@@ -314,14 +282,14 @@ RegisterNetEvent("showzx_lift:lifting", function(data)
     Wait(150)
 
     local fromPos = GetEntityCoords(ped)
-    
+
     local targetPos = vector3(
         data.landingPos.x,
         data.landingPos.y,
         endZ
     )
 
-    local horizDuration = 800
+    local horizDuration = ShowZxLiftConfig.Lifting.HORIZ_DURATION
     local t1 = GetGameTimer()
 
     while true do
@@ -338,85 +306,82 @@ RegisterNetEvent("showzx_lift:lifting", function(data)
     end
     FreezeEntityPosition(ped, false)
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
+    ClearPedTasks(ped)
 end)
 
-function ShowZxLift.CanUse(ped, dist)
-    print("[showzx_lift DEBUG] Checking CanUse: dist=" .. tostring(dist))
-    return dist <= 2.0
-        and isSupportStateValid(ped)
-end
+RegisterNetEvent("showzx_lift:UnLifting", function(data)
+    if type(data) ~= "table" then return end
 
-function ShowZxLift.GetNearestRopeData(ped, maxDistance)
-    local coords = GetEntityCoords(ped)
-    local nearestRope = nil
-    local nearestDist = maxDistance
-
-    for owner, ropeData in pairs(ListOfRopes) do
-        if type(ropeData) == "table" and ropeData.bottomAnchor then
-            local bottom = ropeData.bottomAnchor
-            local dist = Vdist(
-                coords.x,
-                coords.y,
-                coords.z,
-                bottom.x,
-                bottom.y,
-                bottom.z
-            )
-
-            if dist < nearestDist then
-                nearestDist = dist
-                nearestRope = ropeData
-            end
-        end
-    end
-
-    return nearestRope, nearestDist
-end
-
-function ShowZxLift.IsOnCooldown()
-    local now = GetGameTimer()
-    return Support.cooldownEnd and now < Support.cooldownEnd
-end
-
-function ShowZxLift.Start(data)
-    if ShowZxLift.IsOnCooldown() then
-        errorMsg("Veuillez attendre avant de relancer l'action.")
+    if not data.bottomAnchor
+        or not data.topAnchor
+        or not data.landingPos
+        or not data.landingHeading then
+        print("showzx_lift:lifting: Incomplete lift data provided.")
         return
     end
 
-    Support.lastToggle = GetGameTimer()
-    Support.cooldownEnd = Support.lastToggle + 1000 -- 1 seconde de cooldown
-    TriggerServerEvent("showzx_lift:liftStart", data.owner)
-end
+    local ped = PlayerPedId()
 
-CreateThread(function()
+
+
+    local fromPos = GetEntityCoords(ped)
+
+    local targetPos = vector3(
+        data.topAnchor.x,
+        data.topAnchor.y,
+        data.topAnchor.z - 0.25
+    )
+
+    local horizDuration = ShowZxLiftConfig.Lifting.HORIZ_DURATION
+    local t1 = GetGameTimer()
+
+    FreezeEntityPosition(ped, true)
+    SetEntityVelocity(ped, 0.0, 0.0, 0.0)
+
     while true do
-        Wait(50)
-        if not listOfRopes then
-            Wait(1000)
-            goto continue
+        local now = GetGameTimer()
+        local t = (now - t1) / horizDuration
+        if t >= 1.0 then
+            SetEntityCoordsNoOffset(ped, targetPos.x, targetPos.y, targetPos.z, true, false, false)
+            break
         end
 
-        local ped = PlayerPedId()
-        local ropeData, dist = ShowZxLift.GetNearestRopeData(ped, 2.0)
-
-        if ropeData and ShowZxLift.CanUse(ped, dist) then
-            BeginTextCommandDisplayHelp("STRING")
-            AddTextComponentSubstringPlayerName("~INPUT_CONTEXT~ Utiliser la corde")
-            EndTextCommandDisplayHelp(0, false, true, 1)
-
-            if IsControlJustPressed(0, 38) then
-                if ShowZxLift.IsOnCooldown() then
-                    errorMsg("Cooldown actif. Attendez une seconde.")
-                else
-                    ShowZxLift.Start(ropeData)
-                end
-            end
-        end
-        ::continue::
+        local wanted = fromPos + (targetPos - fromPos) * t
+        SetEntityCoordsNoOffset(ped, wanted.x, wanted.y, wanted.z, true, false, false)
+        Wait(0)
     end
+
+
+    local bottom = data.bottomAnchor
+    local top = data.topAnchor
+    SetEntityHeading(ped, data.landingHeading + 180.0) -- Rotate the player to face the opposite direction of the landing heading
+
+
+
+    local descentDuration = ShowZxLiftConfig.Lifting.DESCENT_DURATION
+    local startZ = top.z + 0.5
+    local endZ = bottom.z +
+    1.25                         -- Adjusted to ensure the player lands slightly above the bottom anchor to avoid clipping into the ground
+    local t0 = GetGameTimer()
+
+    Wait(150)
+    while true do
+        local now = GetGameTimer()
+        local t = (now - t0) / descentDuration
+        if t >= 1.0 then
+            SetEntityCoordsNoOffset(ped, bottom.x, bottom.y, endZ, true, false, false)
+            break
+        end
+
+        local curZ = startZ + (endZ - startZ) * t
+        SetEntityCoordsNoOffset(ped, bottom.x, bottom.y, curZ, true, false, false)
+        Wait(0)
+    end
+
+
+    FreezeEntityPosition(ped, false)
+    SetEntityVelocity(ped, 0.0, 0.0, 0.0)
+    ClearPedTasks(ped)
 end)
 
 
--- Note: ajouter une longuer min pour la corde / ajouter les animations de déploiement et de rétractation / ajouter un cooldown pour le déploiement et la rétractation
--- 

@@ -10,7 +10,7 @@ ShowZxLiftConfig.Distances = {
 
 }
 
-ShowZxLiftConfig.SupportToggleCooldown = 5000
+ShowZxLiftConfig.Cooldown = 3000
 
 ShowZxLiftConfig.Animation = {
     SUPP = {
@@ -25,7 +25,8 @@ ShowZxLiftConfig.Animation = {
 }
 
 ShowZxLiftConfig.Lifting = {
-    LIFT_DURATION = 1200,
+    LIFT_DURATION = 7000,
+    DESCENT_DURATION = 7000,
     HORIZ_DURATION = 800,
 }
 
