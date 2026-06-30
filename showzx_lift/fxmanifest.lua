@@ -11,5 +11,7 @@ server_scripts {
 }
 
 client_scripts {
-    'clients/*.lua'
+    'clients/*.lua',
+    'clients/integrations/ox_target.lua',
+    'clients/integrations/shx_contextmenu.lua'
 }

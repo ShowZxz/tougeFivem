@@ -9,6 +9,12 @@ local function resetVariables()
     guessWord = false
 end
 
+local function displayHelpText()
+    BeginTextCommandDisplayHelp("STRING")
+    AddTextComponentSubstringPlayerName("~INPUT_CONTEXT~ Pour deviner le mot")
+    EndTextCommandDisplayHelp(0, false, true, -1)
+end
+
 
 CreateThread(function()
     while true do
@@ -21,7 +27,7 @@ CreateThread(function()
         if guessWord then
             goto continue
         end
-
+        displayHelpText()
         if IsControlJustPressed(0, 38) and not guessUIOpened then
             SetNuiFocus(true, true)
 

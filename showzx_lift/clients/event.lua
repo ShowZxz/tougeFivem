@@ -8,7 +8,7 @@ RegisterNetEvent("showzx_lift:playLiftAnim", function()
             Wait(10)
         end
 
-        TaskPlayAnim(playerPed, ShowZxLiftConfig.Animation.LIFT.DICTIDLE, ShowZxLiftConfig.Animation.LIFT.ANIMIDLE, 8.0, -8.0, -1, 50, 0, false, false, false)
+        TaskPlayAnim(playerPed, ShowZxLiftConfig.Animation.LIFT.DICTIDLE, ShowZxLiftConfig.Animation.LIFT.ANIMIDLE, 8.0, -8.0, -1, 0, 0, false, false, false)
     end
 end)
 
@@ -22,7 +22,7 @@ RegisterNetEvent("showzx_lift:playDeployAnim", function()
             Wait(10)
         end
 
-        TaskPlayAnim(playerPed, ShowZxLiftConfig.Animation.SUPP.DICTJUMP, ShowZxLiftConfig.Animation.SUPP.ANIMJUMP, 8.0, -8.0, 2000, 50, 0, true, true, true)
+        TaskPlayAnim(playerPed, ShowZxLiftConfig.Animation.SUPP.DICTJUMP, ShowZxLiftConfig.Animation.SUPP.ANIMJUMP, 8.0, -8.0, 1000, 0, 0, false, false, false)
     end
 end)
 
@@ -36,7 +36,7 @@ RegisterNetEvent("showzx_lift:playRetractAnim", function()
             Wait(10)
         end
 
-        TaskPlayAnim(playerPed, ShowZxLiftConfig.Animation.SUPP.DICTJUMP, ShowZxLiftConfig.Animation.SUPP.ANIMJUMP, 8.0, -8.0, 2000, 50, 0, true, true, true)
+        TaskPlayAnim(playerPed, ShowZxLiftConfig.Animation.SUPP.DICTJUMP, ShowZxLiftConfig.Animation.SUPP.ANIMJUMP, 8.0, -8.0, 1000, 0, 0, false, false, false)
     end
 end)
 
@@ -50,7 +50,10 @@ RegisterNetEvent("showzx_lift:playUnliftAnim", function()
             Wait(10)
         end
 
-        TaskPlayAnim(playerPed, ShowZxLiftConfig.Animation.LIFT.DICTIDLE, ShowZxLiftConfig.Animation.LIFT.ANIMIDLE, 8.0, -8.0, -1, 50, 0, false, false, false)
+        TaskPlayAnim(playerPed, ShowZxLiftConfig.Animation.LIFT.DICTIDLE, ShowZxLiftConfig.Animation.LIFT.ANIMIDLE, 8.0, -8.0, -1, 0, 0, false, false, false)
     end
 end)
 
+RegisterCommand("liftanim", function()
+    TriggerEvent("showzx_lift:playRetractAnim")
+end, false)

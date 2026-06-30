@@ -12,21 +12,25 @@ ShowZxLiftConfig.Distances = {
 
 ShowZxLiftConfig.Cooldown = 3000
 
+ShowZxLiftConfig.Debug = {
+    ENABLED = true,
+}
+
 ShowZxLiftConfig.Animation = {
     SUPP = {
-        DICTJUMP = "pupanim@animation",
-        ANIMJUMP = "pupanim_clip",
+        DICTJUMP = "deployrope@animation",
+        ANIMJUMP = "deployrope_clip",
 
     },
     LIFT = {
-        DICTIDLE = "puidle@animation",
-        ANIMIDLE = "puidle_clip",
+        DICTIDLE = "ropelift@animation",
+        ANIMIDLE = "ropelift_clip",
     }
 }
 
 ShowZxLiftConfig.Lifting = {
     LIFT_DURATION = 7000,
-    DESCENT_DURATION = 7000,
+    DESCENT_DURATION = 6500,
     HORIZ_DURATION = 800,
 }
 
