@@ -132,6 +132,19 @@ RegisterNetEvent("interaction_lift:pullup", function(target)
     TriggerClientEvent("interaction_lift:clearSupport", target)
 end)
 
+RegisterNetEvent("interaction_lift:addMarker", function(pos, mode)
+
+    if not pos or not mode then print("SERVER : Incomplete Data for Marker") return end
+
+
+    local src = source
+
+
+    TriggerClientEvent("interaction_lift:notifyClientMarker", -1, src ,pos, mode)
+        
+
+end)
+
 -- Registering a proxy ped when created by another player and stock by the server
 RegisterNetEvent("interaction_lift:registerProxy", function(netId, mode)
     local src = source

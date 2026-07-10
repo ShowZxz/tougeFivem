@@ -82,7 +82,7 @@ function registerProxyTarget(entity, netId)
     exports.ox_target:addLocalEntity(entity, {
         {
             name = "interaction_lift_legsup",
-            label = "🦵 Climb (courte échelle)",
+            label = " Sauter ",
             icon = "fa-solid fa-caret-right",
 
             canInteract = function()
@@ -113,7 +113,7 @@ function registerProxyTarget(entity, netId)
 
         {
             name = "interaction_lift_pullup",
-            label = "🧗 To be hoisted",
+            label = "Se faire Hisser",
             icon = "fa-solid fa-caret-right",
 
             canInteract = function()

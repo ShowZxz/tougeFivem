@@ -39,7 +39,6 @@ RegisterNetEvent("showzx_lift:notifyClient", function(isLifting)
         TriggerEvent("showzx_lift:enableLiftMode")
         TriggerEvent("showzx_lift:playDeployAnim")
     else
-        errorMsg("Lift mode disabled.")
         TriggerEvent("showzx_lift:disableLiftMode")
         TriggerEvent("showzx_lift:playRetractAnim")
     end

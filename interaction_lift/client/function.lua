@@ -50,3 +50,9 @@ function DrawHudInfo(msg)
     BeginTextCommandDisplayHelp('HelpMsg')
     EndTextCommandDisplayHelp(0, false, false, -1)
 end
+
+function displayHelpText(mode)
+    BeginTextCommandDisplayHelp("STRING")
+    AddTextComponentSubstringPlayerName("~INPUT_CONTEXT~ Pour faire un "..mode)
+    EndTextCommandDisplayHelp(0, false, true, -1)
+end

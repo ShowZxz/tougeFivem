@@ -134,6 +134,7 @@ RegisterNetEvent("showzx_lift:disableLiftMode", function()
     if Support.ownerId then
         TriggerServerEvent("showzx_lift:removeRopeOwner", Support.ownerId)
         Support.ownerId = nil
+        message("Rope retiré")
     end
 end)
 
