@@ -4,7 +4,8 @@ Support = {
     lastToggle = 0,
     cooldownEnd = 0,
     proxy = nil,
-    netId = nil
+    netId = nil,
+    position = nil
 }
 
 ListOfSupport = {}
@@ -30,65 +31,6 @@ function Support.IsOnCooldown()
     return Support.cooldownEnd and now < Support.cooldownEnd
 end
 
--- Get support status
-function Support.IsActive()
-    return Support.active, Support.mode
-end
-
--- Removing the proxy ped
-function Support.RemoveProxy()
-    if not Config.EnableOxIntegration and not Config.EnableContextMenuIntegration then return end
-
-    print("[interaction_lift] Suppression du proxy ped")
-    if not Support.proxy then return end
-    if Support.proxy and DoesEntityExist(Support.proxy) then
-        DeleteEntity(Support.proxy)
-    end
-
-    TriggerServerEvent("interaction_lift:removeProxy", Support.netId)
-
-    Support.proxy = nil
-    Support.netId = nil
-end
-
--- Creating the proxy ped for ox_target
-function Support.CreateProxy(mode)
-    --print("Config EnableOxIntegration:", Config.EnableContextMenuIntegration)
-    if not Config.EnableOxIntegration and not Config.EnableContextMenuIntegration then return end
-
-    --print("[interaction_lift] Création du proxy ped en mode :", mode)
-    local ped = PlayerPedId()
-    local coords = GetEntityCoords(ped)
-
-    RequestModel("mp_m_freemode_01")
-    while not HasModelLoaded("mp_m_freemode_01") do
-        Wait(10)
-    end
-
-    local proxy = CreatePed(
-        4,
-        "mp_m_freemode_01",
-        coords.x, coords.y, coords.z,
-        GetEntityHeading(ped),
-        true,
-        true
-    )
-
-    NetworkRegisterEntityAsNetworked(proxy)
-    local netId = NetworkGetNetworkIdFromEntity(proxy)
-    SetNetworkIdCanMigrate(netId, true)
-    print("[interaction_lift] Proxy ped créé avec netId :", netId)
-
-    Support.proxy = proxy
-    Support.netId = netId
-    Support.mode = mode
-    Support.active = true
-
-    configureProxy(proxy)
-
-    TriggerServerEvent("interaction_lift:registerProxy", netId, mode)
-end
-
 -- Force disable support mode if the get hit/ragdoll/tazed/death/killed -- Note : call this if a miss a RP event
 function Support.ForceDisable(reason)
     if not Support.active then return end
@@ -99,6 +41,12 @@ function Support.ForceDisable(reason)
     if not Config.EnableOxIntegration and not Config.EnableContextMenuIntegration then return end
 
     TriggerServerEvent("interaction_lift:removeProxy")
+end
+
+function Support.ClearCurrentSupportData(owner)
+    if not CurrentSupportData then return end
+    if owner and CurrentSupportData.supportId ~= owner then return end
+    CurrentSupportData = nil
 end
 
 function Support.GetNearestSupportData(ped, maxDistance)
@@ -217,7 +165,7 @@ RegisterNetEvent("interaction_lift:support:enable", function(mode)
     end
 
     if mode == "pullup" then
-        if not isSupportStateValid(ped) then
+        if not isSupportStateValid(ped) or not canSetSupportForPullup(ped) then
             errorMsg("❌ Invalid position for pullup")
             return
         end
@@ -242,23 +190,26 @@ RegisterNetEvent("interaction_lift:support:enable", function(mode)
         8.0, -8.0, -1,
         1, 0, false, false, false
     )
+
     local pos = GetEntityCoords(ped)
+    Support.position = pos
+
     TriggerServerEvent("interaction_lift:setSupport", true, mode)
 
-    TriggerServerEvent("interaction_lift:addMarker", pos, mode)
+    TriggerServerEvent("interaction_lift:addPosition", pos, mode)
 
     message(("Support %s enabled"):format(mode))
 end)
 
 
-RegisterNetEvent("interaction_lift:notifyClientMarker", function(owner, pos, mode)
+RegisterNetEvent("interaction_lift:notifyClientPosition", function(owner, pos, mode)
     if not owner or not pos or not mode then
         print("Incomplete Data for Support position")
         return
     end
 
-
-    --if owner == playerId then return end
+    local playerId = GetPlayerServerId(PlayerId())
+    if owner == playerId then return end
 
 
     ListOfSupport[owner] = {
@@ -266,6 +217,24 @@ RegisterNetEvent("interaction_lift:notifyClientMarker", function(owner, pos, mod
         pos = pos,
         owner = owner
     }
+
+end)
+
+RegisterNetEvent("interaction_lift:notifyClientRemovePos", function(owner, supportPosition)
+    if not owner or not supportPosition then
+        print("Incomplete Data for remove Support position")
+        return
+    end
+
+    local playerId = GetPlayerServerId(PlayerId())
+    if owner == playerId then return end
+    if not ListOfSupport[owner] then
+        print("No support position found for player")
+        return
+    end
+
+    ListOfSupport[owner] = nil
+    Support.ClearCurrentSupportData(owner)
 end)
 
 --Disable support mode
@@ -276,28 +245,26 @@ RegisterNetEvent("interaction_lift:support:disable", function()
 
     Support.active = false
     Support.mode = nil
+
+    CurrentSupportData = nil
     Support.RemoveProxy()
 
     ClearPedTasks(ped)
     FreezeEntityPosition(ped, false)
 
     TriggerServerEvent("interaction_lift:setSupport", false)
-    --Récuper le marker qui est = owner
-    TriggerServerEvent("interaction_lift:removeMarker") --Give Marker
+    TriggerServerEvent("interaction_lift:removePosition", Support.position)
+    Support.position = nil
 
     message("❌ Support disabled")
 end)
 
-AddEventHandler("onResourceStop", function(res)
-    if res ~= GetCurrentResourceName() then return end
-    Support.RemoveProxy()
-end)
 
 AddEventHandler("baseevents:onPlayerDied", function()
     Support.ForceDisable("death")
 end)
 
-AddEventHandler("baseevents:onPlayerKilled", function()
+AddEventHandler("baseevents:onPlayerKilled", function() 
     Support.ForceDisable("killed")
 end)
 
@@ -336,10 +303,7 @@ CreateThread(function()
             goto continue
         end
 
-        local ped = PlayerPedId()
-        local coords = GetEntityCoords(ped)
-
-        --DrawHudInfo("~b~Support~s~ enable\nPress ~INPUT_VEH_DUCK~ to ~r~stop~s~ supporting")
+        DrawHudInfo("~b~Support~s~ enable\nPress ~INPUT_VEH_DUCK~ to ~r~stop~s~ supporting")
 
         ::continue::
     end
@@ -392,9 +356,13 @@ CreateThread(function()
     end
 end)
 
+-- Gestion des points pour utiliser les supports
 CreateThread(function()
     while true do
         Wait(0)
+
+        CurrentSupportData = nil
+
         if next(ListOfSupport) == nil then
             Wait(200)
             goto continue
@@ -402,9 +370,6 @@ CreateThread(function()
 
         if next(ListOfSupport) ~= nil then
             local ped = PlayerPedId()
-
-            CurrentSupportData = nil
-
             local supportInfo = Support.GetNearestSupportData(ped, 10.0)
             if supportInfo == nil then goto continue end
 

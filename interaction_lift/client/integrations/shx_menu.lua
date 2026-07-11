@@ -44,37 +44,3 @@ ECM:Register(function(screenPosition, hitSomething, worldPosition, hitEntity, no
 
 end)
 
-
--- set up Target Menu Mode : [legs up / pull up]
-ECM:Register(function(screenPosition, hitSomething, worldPosition, hitEntity, normalDirection)
-    if (not DoesEntityExist(hitEntity) or PlayerPedId() == hitEntity) then
-        return
-    end
-
-    local netId = NetworkGetNetworkIdFromEntity(hitEntity)
-
-    local proxy = Support.Proxies[netId]
-    if not proxy then return end
-
-    local targetProxyPed = hitEntity
-    local ped            = PlayerPedId()
-    local dist           = #(GetEntityCoords(ped) - GetEntityCoords(targetProxyPed))
-
-    local targetMenu     = ECM:AddSubmenu(0, "🎯  Target Support Menu")
-
-    if Legsup.CanUse(ped, targetProxyPed, dist) then
-        ECM:AddItem(targetMenu, "🦵 Climb (courte échelle)", function()
-            if proxy.mode == "legsup" then
-                Legsup.Start(proxy.owner)
-            end
-        end)
-    end
-
-    if PullUp.CanUse(ped, targetProxyPed, dist) then
-        ECM:AddItem(targetMenu, "🧗 To be hoisted", function()
-            if proxy.mode == "pullup" then
-                PullUp.Start(proxy.owner)
-            end
-        end)
-    end
-end)

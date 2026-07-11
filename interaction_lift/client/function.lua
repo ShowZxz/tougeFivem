@@ -30,6 +30,43 @@ function isSupportStateValid(ped)
     )
 end
 
+function checkVoidFront(ped)
+    local pos = GetEntityCoords(ped)
+    local forward = GetEntityForwardVector(ped)
+    local offset = 2.0
+
+    local lineX = pos.x + forward.x * offset
+    local lineY = pos.y + forward.y * offset
+
+    local found, groundZ = GetGroundZFor_3dCoord(
+        lineX,
+        lineY,
+        pos.z,
+        false
+    )
+
+    if not found then
+        errorMsg("Impossible de trouver le sol.")
+        return false
+    end
+
+        local lineLengthCheck = pos.z - groundZ
+    if lineLengthCheck < 1.0 then
+        errorMsg("Pas de vide devant vous.")
+        Support.active = false
+        return false
+    end
+    
+    if lineLengthCheck > 3.0 then return true end
+    
+end
+
+function canSetSupportForPullup(ped)
+    return (
+        checkVoidFront(ped)
+    )
+end
+
 -- Draw text on the HUD
 function DrawHudText(text, x, y)
     SetTextFont(0)

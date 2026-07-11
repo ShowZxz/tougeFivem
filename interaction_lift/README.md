@@ -2,7 +2,7 @@
 
 interaction_lift est un script 100% standalone permettant aux joueurs d’interagir physiquement entre eux pour aider à monter ou se hisser grâce à deux mécaniques réalistes (Legs Up & Pull Up).
 
-## Mon Discord : https://discord.gg/cumGDjwz
+## Mon Discord : https://discord.gg/889yY34MJD
 
 #### Legs Up permet :
 

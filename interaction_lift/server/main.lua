@@ -1,10 +1,23 @@
-local supports = {} -- serverId -> bool
+local supports = {}             -- serverId -> bool
 local lastUse = {}
-local COOLDOWN = 5000 -- adjustable cooldown time in milliseconds -- Note : should be in sync with client config
-local MAX_LEGSUP_DISTANCE = 1.6 -- adjustable max distance to perform legsup -- Note : should be in sync with client config
+local COOLDOWN = 5000           -- adjustable cooldown time in milliseconds -- Note : should be in sync with client config
+local MAX_LEGSUP_DISTANCE = 2.0 -- adjustable max distance to perform legsup -- Note : should be in sync with client config
 local MAX_PULLUP_DISTANCE = 5.0 -- adjustable max distance to perform pullup -- Note : should be in sync with client config
 
-SupportProxies = {} -- netId -> {owner = source, mode = "legsup" | "pullup"}
+ListSupportPos = {}
+
+
+
+local function clearSupportPosition(src, positionSupport)
+    if not src then return false end
+
+    local stored = ListSupportPos[src]
+    if not stored then return false end
+
+    ListSupportPos[src] = nil
+    TriggerClientEvent("interaction_lift:notifyClientRemovePos", -1, src, positionSupport or stored.pos)
+    return true
+end
 
 -- Support state handling
 RegisterNetEvent("interaction_lift:setSupport", function(state, mode)
@@ -69,6 +82,7 @@ RegisterNetEvent("interaction_lift:legsup", function(target)
 
     TriggerClientEvent("legsup:applyForce", src)
 
+    clearSupportPosition(target, ListSupportPos[target] and ListSupportPos[target].pos)
 
     TriggerClientEvent("interaction_lift:clearSupport", src)
     TriggerClientEvent("interaction_lift:clearSupport", target)
@@ -128,55 +142,51 @@ RegisterNetEvent("interaction_lift:pullup", function(target)
 
     TriggerClientEvent("pullup:pullingUp", src, target)
 
+    clearSupportPosition(target, ListSupportPos[target] and ListSupportPos[target].pos)
+
     TriggerClientEvent("interaction_lift:clearSupport", src)
     TriggerClientEvent("interaction_lift:clearSupport", target)
 end)
 
-RegisterNetEvent("interaction_lift:addMarker", function(pos, mode)
-
-    if not pos or not mode then print("SERVER : Incomplete Data for Marker") return end
+RegisterNetEvent("interaction_lift:addPosition", function(pos, mode)
+    if not pos or not mode then
+        print("SERVER : Incomplete Data for Marker")
+        return
+    end
 
 
     local src = source
 
-
-    TriggerClientEvent("interaction_lift:notifyClientMarker", -1, src ,pos, mode)
-        
-
-end)
-
--- Registering a proxy ped when created by another player and stock by the server
-RegisterNetEvent("interaction_lift:registerProxy", function(netId, mode)
-    local src = source
-
-    SupportProxies[src] = {
-        netId = netId,
-        mode = mode
+    ListSupportPos[src] = {
+        mode = mode,
+        pos = pos,
+        owner = src
     }
 
-    TriggerClientEvent("interaction_lift:proxyCreated", -1, src, netId, mode)
+    TriggerClientEvent("interaction_lift:notifyClientPosition", -1, src, pos, mode)
 end)
 
--- Removing the proxy ped when requested by the owner player
-RegisterNetEvent("interaction_lift:removeProxy", function(netId)
+RegisterNetEvent("interaction_lift:removePosition", function(position)
+    if not position then
+        print("SERVER : Incomplete Data for removing position")
+        return
+    end
+
     local src = source
+    local positionSupport = position
 
-    if not SupportProxies[netId] then return end
-    if SupportProxies[netId].owner ~= src then return end
+    if not clearSupportPosition(src, positionSupport) then
+        print(("SERVER : No support position found for player %s"):format(src))
+    end
 
-    print("[interaction_lift] Suppression proxy netId :", netId)
-
-    SupportProxies[netId] = nil
-
-    TriggerClientEvent("interaction_lift:proxyRemoved", -1, netId)
 end)
+
+
+
 
 -- If a player disconnects or crash during a support mode than remove their proxy ped
 AddEventHandler("playerDropped", function()
-    for netId, data in pairs(SupportProxies) do
-        if data.owner == source then
-            TriggerClientEvent("interaction_lift:proxyRemoved", -1, netId)
-            SupportProxies[netId] = nil
-        end
-    end
+
+    clearSupportPosition(source, ListSupportPos[source] and ListSupportPos[source].pos)
+
 end)

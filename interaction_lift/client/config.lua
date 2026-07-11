@@ -10,7 +10,7 @@ Config.Keys = {
 
 
 Config.Distances = {
-    LEGSUP_MAX = 1.5,
+    LEGSUP_MAX = 2.0,
     PULLUP_MIN = 3.0,
     PULLUP_MAX = 5.0,
     MIN_WALL_DISTANCE = 1.0,

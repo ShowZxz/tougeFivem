@@ -9,13 +9,6 @@ function PullUp.CanUse(ped, targetPed, dist)
         and isSupportStateValid(ped)
 end
 
--- Check if pullup can be used with target
-function PullUp.CanUseWithTarget(ped)
-    return isSupportStateValid(ped)
-
-        
-end
-
 -- Start pullup interaction
 function PullUp.Start(targetServerId)
     TriggerServerEvent("interaction_lift:pullup", targetServerId)
