@@ -2,14 +2,16 @@ local supports = {}
 listOfRopes = {}
 PlayersOnRope = {}
 
-RegisterNetEvent("showzx_lift:setMode", function(isLifting)
+RegisterNetEvent("showzx_lift:setMode")
+AddEventHandler("showzx_lift:setMode", function(isLifting)
     supports[source] = isLifting
     local name = GetPlayerName(source) or "Unknown"
     print(("showzx_lift: support state of %s set to %s "):format(name, tostring(isLifting)))
     TriggerClientEvent("showzx_lift:notifyClient", source, isLifting)
 end)
 
-RegisterNetEvent("showzx_lift:addRopeOwner", function(ropeData)
+RegisterNetEvent("showzx_lift:addRopeOwner")
+AddEventHandler("showzx_lift:addRopeOwner", function(ropeData)
     if type(ropeData) ~= "table" then
         print("showzx_lift: Invalid rope data provided.")
         return
@@ -50,7 +52,8 @@ RegisterNetEvent("showzx_lift:addRopeOwner", function(ropeData)
     TriggerClientEvent("showzx_lift:setRopeOwner", -1, listOfRopes[source])
 end)
 
-RegisterNetEvent("showzx_lift:removeRopeOwner", function(owner)
+RegisterNetEvent("showzx_lift:removeRopeOwner")
+AddEventHandler("showzx_lift:removeRopeOwner", function(owner)
     if not owner then
         print("showzx_lift: Invalid rope data provided.")
         return
@@ -68,7 +71,8 @@ RegisterNetEvent("showzx_lift:removeRopeOwner", function(owner)
     listOfRopes[source] = nil
 end)
 
-RegisterNetEvent("showzx_lift:liftStart", function(owner)
+RegisterNetEvent("showzx_lift:liftStart")
+AddEventHandler("showzx_lift:liftStart", function(owner)
     local src = source
     local ownerOfRope = owner
 
@@ -102,7 +106,8 @@ RegisterNetEvent("showzx_lift:liftStart", function(owner)
     TriggerClientEvent("showzx_lift:playLiftAnim", src)
 end)
 
-RegisterNetEvent("showzx_lift:unLiftStart", function(owner)
+RegisterNetEvent("showzx_lift:unLiftStart")
+AddEventHandler("showzx_lift:unLiftStart", function(owner)
     local src = source
     local ownerOfRope = owner
 
@@ -136,7 +141,8 @@ RegisterNetEvent("showzx_lift:unLiftStart", function(owner)
     TriggerClientEvent("showzx_lift:playUnliftAnim", src)
 end)
 
-RegisterNetEvent("showzx_lift:playerOnRope", function(isOnRope, owner)
+RegisterNetEvent("showzx_lift:playerOnRope")
+AddEventHandler("showzx_lift:playerOnRope", function(isOnRope, owner)
     local src = source
 
     if not owner then

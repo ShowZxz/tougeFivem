@@ -63,7 +63,8 @@ end
 
 
 -- Align pulled up players
-RegisterNetEvent("pullup:align", function(supportServerId)
+RegisterNetEvent("pullup:align")
+AddEventHandler("pullup:align", function(supportServerId)
     local liftedPed = PlayerPedId()
     local supportPed = GetPlayerPed(GetPlayerFromServerId(supportServerId))
 
@@ -72,7 +73,8 @@ RegisterNetEvent("pullup:align", function(supportServerId)
 end)
 
 -- Play pullup boost animation
-RegisterNetEvent("pullup:playUpBoost", function()
+RegisterNetEvent("pullup:playUpBoost")
+AddEventHandler("pullup:playUpBoost", function()
     local ped = PlayerPedId()
     --Animation de boost
     RequestAnimDict(Config.Animation.PULLUP.DICTLIFT)
@@ -81,7 +83,8 @@ RegisterNetEvent("pullup:playUpBoost", function()
 end)
 
 -- Play pullup jump animation
-RegisterNetEvent("pullup:playJump", function()
+RegisterNetEvent("pullup:playJump")
+AddEventHandler("pullup:playJump", function()
     local ped = PlayerPedId()
     --Animation de saut
     RequestAnimDict(Config.Animation.PULLUP.DICTJUMP)
@@ -90,7 +93,8 @@ RegisterNetEvent("pullup:playJump", function()
 end)
 
 -- Pulling up the player -- Note : maybe add a space check to avoid pulling through walls
-RegisterNetEvent("pullup:pullingUp", function(supportServerId)
+RegisterNetEvent("pullup:pullingUp")
+AddEventHandler("pullup:pullingUp", function(supportServerId)
  
     local ped = PlayerPedId()
 

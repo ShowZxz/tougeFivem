@@ -1,4 +1,5 @@
-RegisterNetEvent("showzx_lift:playLiftAnim", function()
+RegisterNetEvent("showzx_lift:playLiftAnim")
+AddEventHandler("showzx_lift:playLiftAnim", function()
     local playerPed = PlayerPedId()
 
     if not IsEntityPlayingAnim(playerPed, ShowZxLiftConfig.Animation.LIFT.DICTIDLE, ShowZxLiftConfig.Animation.LIFT.ANIMIDLE, 3) then
@@ -12,7 +13,8 @@ RegisterNetEvent("showzx_lift:playLiftAnim", function()
     end
 end)
 
-RegisterNetEvent("showzx_lift:playDeployAnim", function()
+RegisterNetEvent("showzx_lift:playDeployAnim")
+AddEventHandler("showzx_lift:playDeployAnim", function()
     local playerPed = PlayerPedId()
 
     if not IsEntityPlayingAnim(playerPed, ShowZxLiftConfig.Animation.SUPP.DICTJUMP, ShowZxLiftConfig.Animation.SUPP.ANIMJUMP, 3) then
@@ -26,7 +28,8 @@ RegisterNetEvent("showzx_lift:playDeployAnim", function()
     end
 end)
 
-RegisterNetEvent("showzx_lift:playRetractAnim", function()
+RegisterNetEvent("showzx_lift:playRetractAnim")
+AddEventHandler("showzx_lift:playRetractAnim", function()
     local playerPed = PlayerPedId()
 
     if not IsEntityPlayingAnim(playerPed, ShowZxLiftConfig.Animation.SUPP.DICTJUMP, ShowZxLiftConfig.Animation.SUPP.ANIMJUMP, 3) then
@@ -40,7 +43,8 @@ RegisterNetEvent("showzx_lift:playRetractAnim", function()
     end
 end)
 
-RegisterNetEvent("showzx_lift:playUnliftAnim", function()
+RegisterNetEvent("showzx_lift:playUnliftAnim")
+AddEventHandler("showzx_lift:playUnliftAnim", function()
     local playerPed = PlayerPedId()
 
     if not IsEntityPlayingAnim(playerPed, ShowZxLiftConfig.Animation.LIFT.DICTIDLE, ShowZxLiftConfig.Animation.LIFT.ANIMIDLE, 3) then

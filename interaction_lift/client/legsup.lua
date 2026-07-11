@@ -92,7 +92,8 @@ function alignLegsupPlayers(supportPed, liftedPed)
 end
 
 -- Align legsup players
-RegisterNetEvent("legsup:align", function(supportServerId)
+RegisterNetEvent("legsup:align")
+AddEventHandler("legsup:align", function(supportServerId)
     local liftedPed = PlayerPedId()
     local supportPed = GetPlayerPed(GetPlayerFromServerId(supportServerId)) -- a test
 
@@ -100,7 +101,8 @@ RegisterNetEvent("legsup:align", function(supportServerId)
 end)
 
 -- Play legsup animations
-RegisterNetEvent("legsup:playBoost", function()
+RegisterNetEvent("legsup:playBoost")
+AddEventHandler("legsup:playBoost", function()
     local ped = PlayerPedId()
 
     RequestAnimDict(Config.Animation.LEGSUP.DICTLIFT)
@@ -111,7 +113,8 @@ RegisterNetEvent("legsup:playBoost", function()
 end)
 
 -- Play legsup jump animation
-RegisterNetEvent("legsup:playJump", function()
+RegisterNetEvent("legsup:playJump")
+AddEventHandler("legsup:playJump", function()
     local ped = PlayerPedId()
 
     RequestAnimDict(Config.Animation.LEGSUP.DICTJUMP)
@@ -122,7 +125,8 @@ RegisterNetEvent("legsup:playJump", function()
 end)
 
 --Apply legsup force -- Need to be improve later
-RegisterNetEvent("legsup:applyForce", function()
+RegisterNetEvent("legsup:applyForce")
+AddEventHandler("legsup:applyForce", function()
     local ped = PlayerPedId()
 
     FreezeEntityPosition(ped, false)

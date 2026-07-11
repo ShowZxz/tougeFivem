@@ -26,7 +26,8 @@ CreateThread(function()
 end)
 
 -- Clear support after being lifted and the end of the animation
-RegisterNetEvent("interaction_lift:clearSupport", function()
+RegisterNetEvent("interaction_lift:clearSupport")
+AddEventHandler("interaction_lift:clearSupport", function()
     Wait(ANIM_DURATION)
     ClearPedTasks(PlayerPedId())
     message("Support Cleared")
@@ -41,12 +42,14 @@ RegisterNetEvent("interaction_lift:clearSupport", function()
 end)
 
 -- Information about denial reason
-RegisterNetEvent("interaction_lift:denied", function(reason)
+RegisterNetEvent("interaction_lift:denied")
+AddEventHandler("interaction_lift:denied", function(reason)
     errorMsg(reason)
 end)
 
 -- Information about successful interaction
-RegisterNetEvent("interaction_lift:info", function(info)
+RegisterNetEvent("interaction_lift:info")
+AddEventHandler("interaction_lift:info", function(info)
     message(info)
 end)
 

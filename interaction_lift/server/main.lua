@@ -20,7 +20,8 @@ local function clearSupportPosition(src, positionSupport)
 end
 
 -- Support state handling
-RegisterNetEvent("interaction_lift:setSupport", function(state, mode)
+RegisterNetEvent("interaction_lift:setSupport")
+AddEventHandler("interaction_lift:setSupport", function(state, mode)
     supports[source] = state
 
     print(("interaction_lift: support state of %s set to %s | Resquested a %s"):format(source, tostring(state),
@@ -29,7 +30,8 @@ end)
 
 
 -- Handle legsup interaction request
-RegisterNetEvent("interaction_lift:legsup", function(target)
+RegisterNetEvent("interaction_lift:legsup")
+AddEventHandler("interaction_lift:legsup", function(target)
     print("Legs Up requested for target server ID:", target)
     local src = source
 
@@ -89,7 +91,8 @@ RegisterNetEvent("interaction_lift:legsup", function(target)
 end)
 
 -- Handle pullup interaction request
-RegisterNetEvent("interaction_lift:pullup", function(target)
+RegisterNetEvent("interaction_lift:pullup")
+AddEventHandler("interaction_lift:pullup", function(target)
     print("Pull Up requested for target server ID:", target)
     local src = source
 
@@ -148,7 +151,8 @@ RegisterNetEvent("interaction_lift:pullup", function(target)
     TriggerClientEvent("interaction_lift:clearSupport", target)
 end)
 
-RegisterNetEvent("interaction_lift:addPosition", function(pos, mode)
+RegisterNetEvent("interaction_lift:addPosition")
+AddEventHandler("interaction_lift:addPosition", function(pos, mode)
     if not pos or not mode then
         print("SERVER : Incomplete Data for Marker")
         return
@@ -166,7 +170,8 @@ RegisterNetEvent("interaction_lift:addPosition", function(pos, mode)
     TriggerClientEvent("interaction_lift:notifyClientPosition", -1, src, pos, mode)
 end)
 
-RegisterNetEvent("interaction_lift:removePosition", function(position)
+RegisterNetEvent("interaction_lift:removePosition")
+AddEventHandler("interaction_lift:removePosition", function(position)
     if not position then
         print("SERVER : Incomplete Data for removing position")
         return

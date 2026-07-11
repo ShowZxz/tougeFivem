@@ -128,7 +128,8 @@ function Support.Start(data)
 end
 
 -- Enable support mode
-RegisterNetEvent("interaction_lift:support:enable", function(mode)
+RegisterNetEvent("interaction_lift:support:enable")
+AddEventHandler("interaction_lift:support:enable",  function(mode)
     local ped = PlayerPedId()
 
     local ok = Support.CanToggle()
@@ -202,7 +203,8 @@ RegisterNetEvent("interaction_lift:support:enable", function(mode)
 end)
 
 
-RegisterNetEvent("interaction_lift:notifyClientPosition", function(owner, pos, mode)
+RegisterNetEvent("interaction_lift:notifyClientPosition")
+AddEventHandler("interaction_lift:notifyClientPosition", function(owner, pos, mode)
     if not owner or not pos or not mode then
         print("Incomplete Data for Support position")
         return
@@ -220,7 +222,8 @@ RegisterNetEvent("interaction_lift:notifyClientPosition", function(owner, pos, m
 
 end)
 
-RegisterNetEvent("interaction_lift:notifyClientRemovePos", function(owner, supportPosition)
+RegisterNetEvent("interaction_lift:notifyClientRemovePos")
+AddExport("interaction_lift:notifyClientRemovePos", function(owner, supportPosition)
     if not owner or not supportPosition then
         print("Incomplete Data for remove Support position")
         return
@@ -238,7 +241,8 @@ RegisterNetEvent("interaction_lift:notifyClientRemovePos", function(owner, suppo
 end)
 
 --Disable support mode
-RegisterNetEvent("interaction_lift:support:disable", function()
+RegisterNetEvent("interaction_lift:support:disable")
+AddEventHandler("interaction_lift:support:disable", function()
     if not Support.active then return end
 
     local ped = PlayerPedId()

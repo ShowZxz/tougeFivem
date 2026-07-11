@@ -9,7 +9,8 @@ PlayersOnRope = {} -- [playerServerId] = true
 
 
 
-RegisterNetEvent("showzx_lift:enableLiftMode", function()
+RegisterNetEvent("showzx_lift:enableLiftMode")
+AddEventHandler("showzx_lift:enableLiftMode", function()
     local ped = PlayerPedId()
     local pos = GetEntityCoords(ped)
     local forward = GetEntityForwardVector(ped)
@@ -123,7 +124,8 @@ RegisterNetEvent("showzx_lift:enableLiftMode", function()
     TriggerServerEvent("showzx_lift:addRopeOwner", ropeData)
 end)
 
-RegisterNetEvent("showzx_lift:disableLiftMode", function()
+RegisterNetEvent("showzx_lift:disableLiftMode")
+AddEventHandler("showzx_lift:disableLiftMode", function()
     if Support.activeRope then
         DeleteRope(Support.activeRope)
         Support.activeRope = nil
@@ -138,11 +140,13 @@ RegisterNetEvent("showzx_lift:disableLiftMode", function()
     end
 end)
 
-RegisterNetEvent("showzx_lift:denied", function(message)
+RegisterNetEvent("showzx_lift:denied")
+AddEventHandler("showzx_lift:denied", function(message)
     errorMsg(message)
 end)
 
-RegisterNetEvent("showzx_lift:setRopeOwner", function(ropeData)
+RegisterNetEvent("showzx_lift:setRopeOwner")
+AddEventHandler("showzx_lift:setRopeOwner", function(ropeData)
     if type(ropeData) ~= "table" then
         return
     end
@@ -216,7 +220,8 @@ RegisterNetEvent("showzx_lift:setRopeOwner", function(ropeData)
     debugMsg(("showzx_lift: %s has been added as rope owner"):format(name))
 end)
 
-RegisterNetEvent("showzx_lift:deleteRopeForOwner", function(owner)
+RegisterNetEvent("showzx_lift:deleteRopeForOwner")
+AddEventHandler("showzx_lift:deleteRopeForOwner", function(owner)
     if not owner then
         debugMsg("showzx_lift: Incomplete rope data provided.")
         return
@@ -246,7 +251,8 @@ RegisterNetEvent("showzx_lift:deleteRopeForOwner", function(owner)
     print(("showzx_lift: %s has been removed his rope "):format(name))
 end)
 
-RegisterNetEvent("showzx_lift:lifting", function(data ,owner)
+RegisterNetEvent("showzx_lift:lifting")
+AddEventHandler("showzx_lift:lifting", function(data ,owner)
     if type(data) ~= "table" then return end
 
     if not data.bottomAnchor
@@ -321,7 +327,8 @@ RegisterNetEvent("showzx_lift:lifting", function(data ,owner)
     ClearPedTasks(ped)
 end)
 
-RegisterNetEvent("showzx_lift:UnLifting", function(data, owner)
+RegisterNetEvent("showzx_lift:UnLifting")
+AddEventHandler("showzx_lift:UnLifting", function(data ,owner)
     if type(data) ~= "table" then return end
 
     if not data.bottomAnchor
@@ -400,7 +407,8 @@ RegisterNetEvent("showzx_lift:UnLifting", function(data, owner)
     TriggerServerEvent("showzx_lift:playerOnRope", false , owner) -- Notify the server that the player is now on the rope
 end)
 
-RegisterNetEvent("showzx_lift:notifyClientRopeStatus", function(playerServerId, isOnRope)
+RegisterNetEvent("showzx_lift:notifyClientRopeStatus")
+AddEventHandler("showzx_lift:notifyClientRopeStatus", function(playerServerId, isOnRope)
     if not playerServerId then
         debugMsg("showzx_lift: Invalid playerServerId provided for rope status notification.")
         return

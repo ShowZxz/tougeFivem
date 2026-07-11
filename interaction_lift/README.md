@@ -22,7 +22,7 @@ Il a été conçus pour être utilisable dans les serveurs RP et les serveurs PV
 
 #### Requis
 
-- Aucune le script fonctionne 100% standalone
+- ox_target or ContextMenu (Pour activer le mode support) (plus adapter pour du RP)
 
 #### Facultatif mais nécessaire pour du RP ( détection automatique )
 
@@ -45,7 +45,7 @@ Il a été conçus pour être utilisable dans les serveurs RP et les serveurs PV
 
 - Interaction via ox_target ou ContextMenu (Facultatif)
 
-### 🧗 Pull Up (Aide à la montée)
+### 🧗 Pull Up (Hisser un joueur)
 
 - Aide un joueur à se hisser depuis un rebord
 
@@ -61,15 +61,9 @@ Il a été conçus pour être utilisable dans les serveurs RP et les serveurs PV
 
 - Touches clavier (fallback) Standalone
 
-### Proxy Ped System (Third Eye Compatible)
-
-#### Pour contourner les limitations de targeting sur les peds en animation :
-
-Le script crée un ped proxy pour pouvoir target les joueurs en mode support afin de contourner les limitations dues au script qui permet "Alt + Click" l'identifiant (netId) est partagé sur le réseau + une suppression synchronisée coté serveur /  Gestion des crashs et déconnections inattendu.
-
 ## Securité
 
-#### Le support est automatiquement supprimé si :
+#### Le support est automatiquement désactivé si :
 
 - Le joueur prend des dégâts
 
@@ -81,7 +75,7 @@ Le script crée un ped proxy pour pouvoir target les joueurs en mode support afi
 
 - Le joueur quitte le serveur ou crash
 
-- Nettoyage serveur + client garanti (aucun proxy ped fantôme)
+- Nettoyage serveur + client garanti (aucune position fantôme)
 
 ## Configuration
 
@@ -103,8 +97,6 @@ Le script crée un ped proxy pour pouvoir target les joueurs en mode support afi
 
 - Threads actifs uniquement en interaction
 
-- Proxy peds créés uniquement quand nécessaire
-
 - Impact CPU quasi nul en repos
 
 - Compatible sur tout type de serveur
@@ -114,9 +106,9 @@ Le script crée un ped proxy pour pouvoir target les joueurs en mode support afi
 
 Pour toute question, bug ou suggestion :
 
-Mon Discord : https://discord.gg/cumGDjwz
+Mon Discord : https://discord.gg/889yY34MJD
 
-Merci d’éviter les messages privés, utilisez les canaux dédiés
+Merci d’éviter les messages privés et utilisez les canaux dédiés
 
 ## Patchnotes
 
@@ -126,8 +118,8 @@ Merci d’éviter les messages privés, utilisez les canaux dédiés
 
 - Legs Up & Pull Up
 
-- ox_target support
+- ox_target activation support
 
-- ContextMenu support
+- ContextMenu activation support
 
-- Proxy ped system
+- Position partagée

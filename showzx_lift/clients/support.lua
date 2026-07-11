@@ -34,7 +34,8 @@ RegisterCommand("lower", function()
     TriggerServerEvent("showzx_lift:setMode", false)
 end)
 
-RegisterNetEvent("showzx_lift:notifyClient", function(isLifting)
+RegisterNetEvent("showzx_lift:notifyClient")
+AddEventHandler("showzx_lift:notifyClient", function(isLifting)
     if isLifting then
         TriggerEvent("showzx_lift:enableLiftMode")
         TriggerEvent("showzx_lift:playDeployAnim")
@@ -51,7 +52,8 @@ RegisterCommand("rope", function()
 end)
 
 
-RegisterNetEvent("showzx_lift:previewMode", function()
+RegisterNetEvent("showzx_lift:previewMode")
+AddEventHandler("showzx_lift:previewMode", function()
     if Support.active then
         errorMsg("You are already deploy a rope.")
         return
