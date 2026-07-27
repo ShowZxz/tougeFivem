@@ -37,7 +37,6 @@ AddEventHandler("interaction_lift:clearSupport", function()
         Support.mode = nil
         Support.position = nil
         CurrentSupportData = nil
-        Support.RemoveProxy()
     end
 end)
 

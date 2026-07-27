@@ -15,19 +15,19 @@ ECM:Register(function(screenPosition, hitSomething, worldPosition, hitEntity, no
         return
     end
 
-    local supportMenu = ECM:AddSubmenu(0, "🤝   Support Menu")
+    local supportMenu = ECM:AddSubmenu(0, "Support Menu")
 
 
 
     if Legsup.CanUseWithTarget(PlayerPedId()) and not Support.active and Support.mode ~= "legsup" then
-        ECM:AddItem(supportMenu, "🦵 Legs Up Mode", function()
+        ECM:AddItem(supportMenu, "Legs Up Mode", function()
             TriggerEvent("interaction_lift:support:enable", "legsup")
         end)
     end
 
 
     if PullUp.CanUseWithTarget(PlayerPedId()) and not Support.active and Support.mode ~= "pullup" then
-        ECM:AddItem(supportMenu, "🧗 Pull Up Mode", function()
+        ECM:AddItem(supportMenu, "Pull Up Mode", function()
             TriggerEvent("interaction_lift:support:enable", "pullup")
         end)
     end

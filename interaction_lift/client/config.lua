@@ -65,10 +65,8 @@ Config.Frame = {
 
 -- Arc parameters for the legsup interaction
 Config.Arc = {
-    ARC_UP_FORCE = 2.35, -- Initial upward force
-    ARC_FORWARD_FORCE = 2.4, -- Forward force applied at each step
-    ARC_STEP_TIME = 40, -- Time (in ms) between each arc step
-    ARC_STEPS = 6 -- How many time do we applied ARC_FORWARD_FORCE and ARC_UP_FORCE
+    ARC_HEIGHT = 2.50, -- Initial upward force
+    ARC_FORWARD_DISTANCE = 4.6, -- Forward force applied at each step
 }
 
 

@@ -124,7 +124,7 @@ AddEventHandler("legsup:playJump", function()
         false, false)
 end)
 
---Apply legsup force -- Need to be improve later
+--Apply legsup force -- Fully Reworked
 RegisterNetEvent("legsup:applyForce")
 AddEventHandler("legsup:applyForce", function()
     local ped = PlayerPedId()
@@ -133,7 +133,7 @@ AddEventHandler("legsup:applyForce", function()
     local coords = GetEntityCoords(ped)
 
     Wait(BOOST_TIME)
-    ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.05)
+    ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.05) -- c'est un peu goofy mais j'aime bien !
 
     SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z + 0.15, false, false, false)
     SetPedCanRagdoll(ped, false)
@@ -166,7 +166,7 @@ AddEventHandler("legsup:applyForce", function()
         end
     end)
 
-    -- Phase 1 : décollage vertical (inchangé, on force jusqu'à IsEntityInAir)
+    -- Phase de décollage vertical 
     local maxAttempts = 15
     local attempts = 0
     while not IsEntityInAir(ped) and attempts < maxAttempts do
@@ -175,8 +175,7 @@ AddEventHandler("legsup:applyForce", function()
         Wait(0)
     end
 
-    -- Phase 2 : on force la vélocité horizontale ET verticale À CHAQUE FRAME
-    -- pendant toute la durée du vol, sinon le jeu écrase le X/Y dès que tu arrêtes
+    -- Phase de force de la vélocité horizontale ET verticale À CHAQUE FRAME
     local startTime = GetGameTimer()
     local flightDurationMs = math.floor(totalAirTime * 1000)
 
@@ -202,7 +201,7 @@ end)
 
 
 
--- Debug command to test legsup force application -- Need to be improve later --Here for testing
+-- Debug command to test legsup force application --Here for testing
 RegisterCommand("aforce", function()
     if not Config.debug then
         errorMsg("❌ Commande désactivée")

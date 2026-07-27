@@ -30,6 +30,7 @@ function isSupportStateValid(ped)
     )
 end
 
+--Check if there is a void in front of the player to perform a pullup
 function checkVoidFront(ped)
     local pos = GetEntityCoords(ped)
     local forward = GetEntityForwardVector(ped)

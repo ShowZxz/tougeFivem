@@ -59,7 +59,7 @@ Il a été conçus pour être utilisable dans les serveurs RP et les serveurs PV
 
 - ContextMenu
 
-- Touches clavier (fallback) Standalone
+- Touches clavier Standalone
 
 ## Securité
 

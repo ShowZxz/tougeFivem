@@ -38,9 +38,7 @@ function Support.ForceDisable(reason)
     print("[interaction_lift] Support forcé OFF :", reason)
 
     TriggerEvent("interaction_lift:support:disable")
-    if not Config.EnableOxIntegration and not Config.EnableContextMenuIntegration then return end
 
-    TriggerServerEvent("interaction_lift:removeProxy")
 end
 
 function Support.ClearCurrentSupportData(owner)
@@ -202,7 +200,7 @@ AddEventHandler("interaction_lift:support:enable",  function(mode)
     message(("Support %s enabled"):format(mode))
 end)
 
-
+-- Add new support position to the list
 RegisterNetEvent("interaction_lift:notifyClientPosition")
 AddEventHandler("interaction_lift:notifyClientPosition", function(owner, pos, mode)
     if not owner or not pos or not mode then
@@ -222,6 +220,7 @@ AddEventHandler("interaction_lift:notifyClientPosition", function(owner, pos, mo
 
 end)
 
+-- Remove support position from the list
 RegisterNetEvent("interaction_lift:notifyClientRemovePos")
 AddExport("interaction_lift:notifyClientRemovePos", function(owner, supportPosition)
     if not owner or not supportPosition then
@@ -251,7 +250,7 @@ AddEventHandler("interaction_lift:support:disable", function()
     Support.mode = nil
 
     CurrentSupportData = nil
-    Support.RemoveProxy()
+    --Support.RemoveProxy()
 
     ClearPedTasks(ped)
     FreezeEntityPosition(ped, false)
