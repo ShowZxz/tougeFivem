@@ -5,7 +5,9 @@ author 'ShowZx'
 description 'Type Shit'
 version '0.9.5'
 
-client_script { 'client/config.lua', 
+shared_script 'config.lua'
+
+client_script { 
 'client/pullup.lua', 
 'client/legsup.lua',
 'client/main.lua',

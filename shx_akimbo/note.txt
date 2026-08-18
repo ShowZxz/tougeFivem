@@ -1,0 +1,7 @@
+Animation quand on vise 
+Animation course en combat
+
+Chargeur synchronisé avec le type d'arme utilisé
+Voir l'arme secondaire tiré réelement
+recharger la main secondaire quand on souhaite recharger
+empecher la suppression de l'arme quand la main secondaire a plus de balle (sa risque d'être fixer si on synchronise les chargeur et quand on recharge on recharge les deux armes)

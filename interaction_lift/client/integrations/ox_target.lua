@@ -37,7 +37,7 @@ CreateThread(function()
             
 
             canInteract = function()
-                if Legsup.CanUseWithTarget(PlayerPedId()) and not Support.active and Support.mode ~= "legsup" then
+                if not Support.active and Support.mode ~= "legsup" then
                     return true
                 end
 
@@ -58,7 +58,7 @@ CreateThread(function()
             distance = 0,
 
             canInteract = function()
-                if PullUp.CanUseWithTarget(PlayerPedId()) and not Support.active and Support.mode ~= "pullup" then
+                if not Support.active and Support.mode ~= "pullup" then
                     return true
                 end 
 

@@ -1,8 +1,8 @@
 local supports = {}             -- serverId -> bool
 local lastUse = {}
-local COOLDOWN = 5000           -- adjustable cooldown time in milliseconds -- Note : should be in sync with client config
-local MAX_LEGSUP_DISTANCE = 2.0 -- adjustable max distance to perform legsup -- Note : should be in sync with client config
-local MAX_PULLUP_DISTANCE = 5.0 -- adjustable max distance to perform pullup -- Note : should be in sync with client config
+local COOLDOWN = Config.SupportToggleCooldown
+local MAX_LEGSUP_DISTANCE = Config.Distances.LEGSUP_MAX
+local MAX_PULLUP_DISTANCE = Config.Distances.PULLUP_MAX
 
 ListSupportPos = {}
 

@@ -222,7 +222,7 @@ end)
 
 -- Remove support position from the list
 RegisterNetEvent("interaction_lift:notifyClientRemovePos")
-AddExport("interaction_lift:notifyClientRemovePos", function(owner, supportPosition)
+AddEventHandler("interaction_lift:notifyClientRemovePos", function(owner, supportPosition)
     if not owner or not supportPosition then
         print("Incomplete Data for remove Support position")
         return

@@ -234,7 +234,7 @@ end)
 
 RegisterCommand("gun", function()
     local player = PlayerPedId()
-    local weaponHash = GetHashKey("WEAPON_PISTOL")
+    local weaponHash = GetHashKey("WEAPON_MACHINEPISTOL")
     GiveWeaponToPed(player, weaponHash, 250, false, true)
     message("Pistolet donné.")
 end)
