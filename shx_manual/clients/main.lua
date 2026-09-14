@@ -11,6 +11,16 @@ local gearLimits = {
     [6] = 250
 }
 
+local gearMinLimits = {
+    [-1] = 0, -- Reverse gear
+    [1] = 0,
+    [2] = 20,
+    [3] = 40,
+    [4] = 70,
+    [5] = 100,
+    [6] = 140
+}
+
 local function message(msg)
     BeginTextCommandThefeedPost('STRING')
     AddTextComponentSubstringPlayerName(msg)
@@ -20,42 +30,44 @@ end
 
 CreateThread(function()
     while true do
-        Wait(0)
-        local ped = PlayerPedId()
-        if IsPedInAnyVehicle(ped, false) then
-            local veh = GetVehiclePedIsIn(ped, false)
+        local threadWait = 10 -- Default wait time
+        if IsPedInAnyVehicle(PlayerPedId(), false) then
+            local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+            local speed = GetEntitySpeed(vehicle) * 3.6 -- Convert to km/h
 
-            if GetPedInVehicleSeat(veh, -1) == ped then
-
-                local speed = GetEntitySpeed(veh) * 3.6
-
-                if speed > gearLimits[currentGear] then
-                    -- réduire la puissance
-                    SetVehicleMaxSpeed(veh,gearLimits[currentGear])
-                    
-                end
-
-                if IsControlJustPressed(0, 38) then -- E key
+            if IsControlJustPressed(0, 38) then -- E key
+                if currentGear < maxGear and speed >= gearMinLimits[currentGear + 1] then
                     currentGear = currentGear + 1
-
-                    if currentGear > maxGear then
-                        currentGear = maxGear
-                    end
-
-                    print("Changement de vitesse: " .. currentGear)
+                    message("Shifted up to gear " .. currentGear)
                 end
-
-
-                if IsControlJustPressed(0, 44) then -- Q
+            elseif IsControlJustPressed(0, 44) then -- Q key
+                if currentGear > minGear and speed <= gearMinLimits[currentGear - 1] then
                     currentGear = currentGear - 1
-
-                    if currentGear < minGear then
-                        currentGear = minGear
-                    end
-
-                    print("Changement de vitesse: " .. currentGear)
+                    message("Shifted down to gear " .. currentGear)
                 end
             end
+
+            if currentGear > 0 and speed > gearLimits[currentGear] then
+                message("You are over the speed limit for gear " .. currentGear)
+            end
         end
+
+        -- limiter la vitesse max en fonction du rapport actuel
+        if IsPedInAnyVehicle(PlayerPedId(), false) then
+            local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+            local speed = GetEntitySpeed(vehicle) * 3.6 -- Convert to km/h
+
+            if currentGear > 0 and speed > gearLimits[currentGear] then
+                SetEntityMaxSpeed(vehicle, gearLimits[currentGear] / 3.6) -- Convert back to m/s
+            else
+                SetEntityMaxSpeed(vehicle, 999.0) -- Reset max speed when not over the limit
+            end
+        end
+        if not IsPedInAnyVehicle(PlayerPedId(), false) then
+            currentGear = 1 -- Reset gear when exiting vehicle
+            threadWait = 2000 -- Increase wait time when not in a vehicle
+
+        end
+        Wait(threadWait)
     end
 end)

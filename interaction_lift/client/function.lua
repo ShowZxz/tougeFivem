@@ -51,15 +51,13 @@ function checkVoidFront(ped)
         return false
     end
 
-        local lineLengthCheck = pos.z - groundZ
-    if lineLengthCheck < 1.0 then
+    local lineLengthCheck = pos.z - groundZ
+    if lineLengthCheck < Config.Distances.PULLUP_MIN then
         errorMsg("Pas de vide devant vous.")
-        Support.active = false
         return false
     end
-    
-    if lineLengthCheck > 3.0 then return true end
-    
+
+    return true
 end
 
 function canSetSupportForPullup(ped)
