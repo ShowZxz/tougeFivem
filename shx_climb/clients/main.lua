@@ -35,9 +35,22 @@ end
 CreateThread(function()
     while true do
         Wait(0)
+
+        if playerState ~= "IDLE" then  
+            DisableControlAction(0, 22, true) -- Disable the jump control
+            DisableControlAction(0, 21, true) -- Disable the sprint control
+            DisableControlAction(0, 24, true) -- Disable the attack control
+            DisableControlAction(0, 25, true) -- Disable the aim control
+            DisableControlAction(0, 30, true)
+            DisableControlAction(0, 31, true)
+            DisableControlAction(0, 32, true)
+            DisableControlAction(0, 33, true)
+            DisableControlAction(0, 34, true)
+            DisableControlAction(0, 35, true)
+        end
+
         local ped = PlayerPedId()
         local coords = GetEntityCoords(ped)
-        local heading = GetEntityHeading(ped)
         local textDisplay = "PlayerState : "..playerState
         displayHelpText(textDisplay)
 
@@ -81,6 +94,7 @@ CreateThread(function()
                     DrawText3D(endCoords2 + vector3(0.0, 0.0, 0.2), "HANGING POSSIBLE")
                     if IsControlJustPressed(0, 22) and playerState == "IDLE" then
                         playerState = "HANGING"
+                        FreezeEntityPosition(ped, true)
                         TriggerEvent("shx_climb:hang", endCoords2)
                     end
                 else
@@ -93,6 +107,7 @@ CreateThread(function()
 
                     if IsControlJustPressed(0, 22) and playerState == "IDLE" then
                         playerState = "VAULTING"
+                        FreezeEntityPosition(ped, true)
                         TriggerEvent("shx_climb:vault", endCoords2)
                     end
                 else

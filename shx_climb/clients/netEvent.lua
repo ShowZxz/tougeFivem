@@ -1,9 +1,10 @@
 
 AddEventHandler("shx_climb:hang", function(targetCoords)
 
-    Wait(1000)
-    playerState = "IDLE"
+    
     print("PlayerState : " .. playerState)
+    vaultTask(targetCoords)
+     -- Unfreeze the player's position
 
     --[[    local ped = PlayerPedId()
     local playerCoords = GetEntityCoords(ped)
@@ -30,6 +31,13 @@ AddEventHandler("shx_climb:vault", function(targetCoords)
     Wait(1000)
     playerState = "IDLE"
     print("PlayerState : " .. playerState)
+    FreezeEntityPosition(PlayerPedId(), false) -- Unfreeze the player's position
 
 
+end)
+
+
+AddEventHandler("onResourceStop", function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    FreezeEntityPosition(PlayerPedId(), false)
 end)
